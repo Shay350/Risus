@@ -28,13 +28,20 @@ const SYSTEM_INSTRUCTION =
   '      { "risk": "short label", "score": 0 }\n' +
   '    ]\n' +
   '  },\n' +
-  '  "timeline": {\n' +
-  '    "summary": "one sentence insight",\n' +
-  '    "milestones": [\n' +
-  '      { "month": "Month X", "label": "milestone", "type": "foundation|growth|scale" }\n' +
+  '  "nextSteps": {\n' +
+  '    "summary": "one sentence insight about the overall action plan",\n' +
+  '    "steps": [\n' +
+  '      {\n' +
+  '        "timeframe": "Month 1-2",\n' +
+  '        "action": "concise action title (5-8 words)",\n' +
+  '        "detail": "2-3 sentences explaining what specifically to do, why it matters for this business, and what a successful outcome looks like",\n' +
+  '        "category": "foundation|growth|scale",\n' +
+  '        "priority": "high|medium|low"\n' +
+  '      }\n' +
   '    ]\n' +
   '  }\n' +
-  '}';
+  '}\n\n' +
+  'Generate 4-6 next steps ordered chronologically. Use real numbers and specifics from the transcript wherever possible.';
 
 router.post('/', async (req, res) => {
   const { transcript } = req.body;

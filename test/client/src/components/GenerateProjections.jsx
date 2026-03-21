@@ -28,10 +28,16 @@ const C = {
   textSub: '#A0A8C0',
 };
 
-const TYPE_COLOR = {
+const CATEGORY_COLOR = {
   foundation: C.blue,
   growth: C.accent,
   scale: C.gold,
+};
+
+const PRIORITY_COLOR = {
+  high: C.danger,
+  medium: C.gold,
+  low: C.muted,
 };
 
 // ─── Mock transcript used when no prop provided ────────────────────
@@ -50,7 +56,7 @@ Entrepreneur: Supply chain honestly. And finding reliable staff. Health permits 
 `;
 
 // ─── Shared card wrapper ───────────────────────────────────────────
-function Card({ emoji, title, summary, children }) {
+function Card({ title, summary, children, fullWidth }) {
   return (
     <div style={{
       background: C.surface,
@@ -60,15 +66,13 @@ function Card({ emoji, title, summary, children }) {
       display: 'flex',
       flexDirection: 'column',
       gap: 10,
+      gridColumn: fullWidth ? '1 / -1' : undefined,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 16 }}>{emoji}</span>
-        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: C.text, letterSpacing: 1, textTransform: 'uppercase' }}>
-          {title}
-        </span>
-      </div>
+      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: C.textSub, letterSpacing: 2, textTransform: 'uppercase' }}>
+        {title}
+      </span>
       {summary && (
-        <p style={{ fontStyle: 'italic', fontSize: 12, color: C.muted, lineHeight: 1.5, margin: 0 }}>
+        <p style={{ fontStyle: 'italic', fontSize: 12, color: C.muted, lineHeight: 1.6, margin: 0 }}>
           {summary}
         </p>
       )}
@@ -80,10 +84,10 @@ function Card({ emoji, title, summary, children }) {
 // ─── Legend row helper ────────────────────────────────────────────
 function LegendRow({ items }) {
   return (
-    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 6 }}>
+    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 4 }}>
       {items.map(({ color, label }) => (
         <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <div style={{ width: 10, height: 10, borderRadius: 2, background: color, flexShrink: 0 }} />
+          <div style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} />
           <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: C.muted }}>{label}</span>
         </div>
       ))}
@@ -114,7 +118,7 @@ function CustomTooltip({ active, payload, label }) {
 // ─── Chart cards ──────────────────────────────────────────────────
 function FinancialCard({ data, summary }) {
   return (
-    <Card emoji="💰" title="Financial Forecast" summary={summary}>
+    <Card title="Financial Forecast" summary={summary}>
       <ResponsiveContainer width="100%" height={200}>
         <BarChart data={data} barCategoryGap="25%" barGap={3}>
           <CartesianGrid strokeDasharray="3 3" stroke={C.border} vertical={false} />
@@ -138,7 +142,7 @@ function FinancialCard({ data, summary }) {
 
 function MarketCard({ data, summary }) {
   return (
-    <Card emoji="📈" title="Market Opportunity" summary={summary}>
+    <Card title="Market Opportunity" summary={summary}>
       <ResponsiveContainer width="100%" height={200}>
         <BarChart data={data} layout="vertical" barCategoryGap="30%" barGap={3}>
           <CartesianGrid strokeDasharray="3 3" stroke={C.border} horizontal={false} />
@@ -161,7 +165,7 @@ function MarketCard({ data, summary }) {
 
 function RiskCard({ data, summary }) {
   return (
-    <Card emoji="⚠️" title="Risk Assessment" summary={summary}>
+    <Card title="Risk Assessment" summary={summary}>
       <ResponsiveContainer width="100%" height={200}>
         <RadarChart data={data} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
           <PolarGrid stroke={C.border} />
@@ -175,46 +179,60 @@ function RiskCard({ data, summary }) {
   );
 }
 
-function TimelineCard({ milestones, summary }) {
+function NextStepsCard({ steps, summary }) {
   return (
-    <Card emoji="🗓" title="Milestone Timeline" summary={summary}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, paddingLeft: 4, marginTop: 4 }}>
-        {milestones.map((m, i) => {
-          const color = TYPE_COLOR[m.type] || C.muted;
-          const isLast = i === milestones.length - 1;
+    <Card title="Next Steps" summary={summary} fullWidth>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12, marginTop: 4 }}>
+        {steps.map((step, i) => {
+          const catColor = CATEGORY_COLOR[step.category] || C.muted;
+          const priColor = PRIORITY_COLOR[step.priority] || C.muted;
           return (
-            <div key={i} style={{ display: 'flex', gap: 12, position: 'relative' }}>
-              {/* Dot + connector */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                <div style={{
-                  width: 10, height: 10, borderRadius: '50%',
-                  background: color, marginTop: 3,
-                  boxShadow: `0 0 6px ${color}80`,
-                  flexShrink: 0,
-                }} />
-                {!isLast && (
-                  <div style={{ width: 1, flex: 1, background: C.border, minHeight: 28, margin: '2px 0' }} />
-                )}
-              </div>
-              {/* Content */}
-              <div style={{ paddingBottom: isLast ? 0 : 16, paddingTop: 0 }}>
-                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: color, display: 'block', marginBottom: 1 }}>
-                  {m.month}
+            <div key={i} style={{
+              background: C.surfaceHigh,
+              border: `1px solid ${C.border}`,
+              borderLeft: `3px solid ${catColor}`,
+              borderRadius: 8,
+              padding: '14px 16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+            }}>
+              {/* Timeframe + priority badge */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: catColor, letterSpacing: 0.5 }}>
+                  {step.timeframe}
                 </span>
-                <span style={{ fontSize: 12, color: C.text }}>{m.label}</span>
                 <span style={{
-                  display: 'inline-block', marginLeft: 8,
                   fontFamily: "'DM Mono', monospace", fontSize: 9,
-                  color: color, opacity: 0.8, textTransform: 'uppercase', letterSpacing: 0.5,
+                  color: priColor, textTransform: 'uppercase', letterSpacing: 1,
+                  border: `1px solid ${priColor}40`, borderRadius: 4, padding: '2px 6px',
                 }}>
-                  {m.type}
+                  {step.priority}
+                </span>
+              </div>
+
+              {/* Action title */}
+              <p style={{ fontSize: 13, fontWeight: 600, color: C.text, margin: 0, lineHeight: 1.4 }}>
+                {step.action}
+              </p>
+
+              {/* Detail */}
+              <p style={{ fontSize: 12, color: C.textSub, margin: 0, lineHeight: 1.65 }}>
+                {step.detail}
+              </p>
+
+              {/* Category tag */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: catColor }} />
+                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: C.muted, textTransform: 'uppercase', letterSpacing: 1 }}>
+                  {step.category}
                 </span>
               </div>
             </div>
           );
         })}
       </div>
-      {/* Legend */}
+
       <LegendRow items={[
         { color: C.blue, label: 'Foundation' },
         { color: C.accent, label: 'Growth' },
@@ -318,7 +336,7 @@ export default function GenerateProjections({ transcript }) {
           {isLoading ? (
             <>
               <LoadingDots />
-              <span>Analyzing transcript…</span>
+              <span>Analyzing transcript...</span>
             </>
           ) : (
             <>
@@ -345,7 +363,7 @@ export default function GenerateProjections({ transcript }) {
           <FinancialCard data={data.financial?.data} summary={data.financial?.summary} />
           <MarketCard data={data.market?.data} summary={data.market?.summary} />
           <RiskCard data={data.risk?.data} summary={data.risk?.summary} />
-          <TimelineCard milestones={data.timeline?.milestones} summary={data.timeline?.summary} />
+          <NextStepsCard steps={data.nextSteps?.steps ?? []} summary={data.nextSteps?.summary} />
         </div>
       )}
 
@@ -362,7 +380,7 @@ export default function GenerateProjections({ transcript }) {
           letterSpacing: 0.5,
         }}>
           Click <span style={{ color: C.accent }}>✦ Generate Projections</span> to analyse the live transcript
-          and surface financial forecasts, market opportunity, risk scores, and growth milestones.
+          and surface financial forecasts, market opportunity, risk scores, and prioritised next steps.
         </div>
       )}
     </div>
