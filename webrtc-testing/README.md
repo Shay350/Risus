@@ -115,3 +115,21 @@ For camera/microphone access, use one of:
 
 - `http://localhost:5173` (treated as secure context by browsers)
 - HTTPS for your IP/domain (recommended for non-localhost access)
+
+## Stable demo mode (recommended)
+
+The client includes a "Demo stable mode" toggle on the home page. It is enabled by default.
+
+What it does:
+
+- lowers video capture profile (smaller resolution + fps)
+- forces websocket transport for signaling client
+- if TURN is configured, prefers TURN relay for ICE transport
+
+To enable TURN for reliable cross-network demos, fill these fields in the app before creating a session:
+
+- TURN URLs (comma-separated)
+- TURN username
+- TURN credential
+
+These settings are stored in browser local storage and embedded into generated join links so both laptops use the same connection profile.
