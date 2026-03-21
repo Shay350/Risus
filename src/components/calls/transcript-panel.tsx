@@ -18,7 +18,7 @@ export function TranscriptPanel({
   translationLabel,
 }: TranscriptPanelProps) {
   return (
-    <CardPanel title="Translation" className="flex h-full min-h-[680px] flex-col rounded-[28px]">
+    <CardPanel title="Translation" className="flex flex-col rounded-[28px]" style={{ height: "calc(100vh - 12rem)" }}>
       <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background-elevated)] px-4 py-3">
         <div className="flex items-center gap-3 text-sm text-[var(--muted)]">
           <Languages className="h-4 w-4 text-[var(--accent)]" />

@@ -1,17 +1,13 @@
-import { Clock3, Languages } from "lucide-react";
+import { BarChart2, Clock3, Languages } from "lucide-react";
+import Link from "next/link";
 
 import { CallControls } from "@/components/calls/call-controls";
 import { TranscriptPanel } from "@/components/calls/transcript-panel";
 import { VideoTile } from "@/components/calls/video-tile";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { GenerateProjections } from "@/components/workspace/generate-projections";
 import { activeSession, organization, transcriptItems } from "@/lib/mock-data";
 
 export default function SessionPage() {
-  const liveTranscript = transcriptItems
-    .map((item) => `${item.speakerName}: ${item.originalText}`)
-    .join("\n");
-
   const remoteParticipant =
     activeSession.participants.find((participant) => participant.role === "client") ??
     activeSession.participants[0];
@@ -56,7 +52,22 @@ export default function SessionPage() {
         </div>
 
         <CallControls />
-        <GenerateProjections transcript={liveTranscript} />
+
+        <Link
+          href="/analysis"
+          className="flex items-center justify-between gap-4 rounded-2xl border border-[var(--border)] bg-[var(--background-elevated)] px-5 py-4 transition-colors hover:border-[var(--accent)] hover:bg-white group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)]">
+              <BarChart2 className="h-4 w-4 text-[var(--accent)]" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[var(--foreground)]">AI Projections &amp; Analysis</p>
+              <p className="text-xs text-[var(--muted)]">Financial forecasts, risk assessment, and next steps generated from this transcript.</p>
+            </div>
+          </div>
+          <span className="text-sm text-[var(--muted)] transition-colors group-hover:text-[var(--accent)]">View →</span>
+        </Link>
       </section>
 
       <TranscriptPanel
