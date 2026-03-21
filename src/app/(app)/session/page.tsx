@@ -4,9 +4,14 @@ import { CallControls } from "@/components/calls/call-controls";
 import { TranscriptPanel } from "@/components/calls/transcript-panel";
 import { VideoTile } from "@/components/calls/video-tile";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { GenerateProjections } from "@/components/workspace/generate-projections";
 import { activeSession, organization, transcriptItems } from "@/lib/mock-data";
 
 export default function SessionPage() {
+  const liveTranscript = transcriptItems
+    .map((item) => `${item.speakerName}: ${item.originalText}`)
+    .join("\n");
+
   const remoteParticipant =
     activeSession.participants.find((participant) => participant.role === "client") ??
     activeSession.participants[0];
@@ -51,6 +56,7 @@ export default function SessionPage() {
         </div>
 
         <CallControls />
+        <GenerateProjections transcript={liveTranscript} />
       </section>
 
       <TranscriptPanel
