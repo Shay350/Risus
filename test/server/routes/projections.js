@@ -52,7 +52,7 @@ router.post('/', async (req, res) => {
     const genAI = new GoogleGenAI({ apiKey });
 
     const result = await genAI.models.generateContent({
-      model: 'gemini-2.5-flash-preview-04-17',
+      model: 'gemini-2.5-flash',
       contents: `Here is the consulting call transcript:\n\n${transcript}`,
       config: { systemInstruction: SYSTEM_INSTRUCTION },
     });
