@@ -1,5 +1,5 @@
 const express = require('express');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GoogleGenAI } = require('@google/genai');
 
 const router = express.Router();
 
@@ -49,17 +49,15 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
+    const genAI = new GoogleGenAI({ apiKey });
+
+    const result = await genAI.models.generateContent({
       model: 'gemini-2.5-flash-preview-04-17',
-      systemInstruction: SYSTEM_INSTRUCTION,
+      contents: `Here is the consulting call transcript:\n\n${transcript}`,
+      config: { systemInstruction: SYSTEM_INSTRUCTION },
     });
 
-    const result = await model.generateContent(
-      `Here is the consulting call transcript:\n\n${transcript}`
-    );
-
-    let raw = result.response.text();
+    let raw = result.text;
 
     // Strip any accidental ```json ... ``` fences
     raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
