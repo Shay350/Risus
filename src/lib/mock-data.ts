@@ -161,9 +161,9 @@ export const transcriptItems: TranscriptItem[] = [
     speakerId: "p1",
     speakerName: "Amina Hassan",
     originalText:
-      "Waxaan rabaa inaan fahmo haddii dakhliga usbuucan uu saameynayo kaalmada kirada.",
+      "Dakhligeyga bishiiba waa $2,480. Kiraddu waa $1,650 bishiiba, taasoo ka dhigtay aad iyo aad u adag.",
     translatedText:
-      "I need to understand whether this week's income affects the rent support application.",
+      "My monthly income is $2,480. Rent is $1,650 per month, which makes things very tight.",
     sourceLanguage: "so",
     targetLanguage: "en",
     confidence: 0.97,
@@ -172,13 +172,13 @@ export const transcriptItems: TranscriptItem[] = [
   {
     id: "t-2",
     sessionId: activeSession.id,
-    timestamp: "10:13",
+    timestamp: "10:14",
     speakerId: "p2",
     speakerName: "Sofia Chen",
     originalText:
-      "We can model both the current income and the reduced-hours scenario before we submit anything.",
+      "So after rent you have about $830 left. What are your other fixed monthly costs — utilities, transport, groceries?",
     translatedText:
-      "We can model both the current income and the reduced-hours scenario before we submit anything.",
+      "So after rent you have about $830 left. What are your other fixed monthly costs — utilities, transport, groceries?",
     sourceLanguage: "en",
     targetLanguage: "en",
     confidence: 0.99,
@@ -191,9 +191,9 @@ export const transcriptItems: TranscriptItem[] = [
     speakerId: "p1",
     speakerName: "Amina Hassan",
     originalText:
-      "Waxaan hayaa warqaddii kirada, laakiin mushaharka ugu dambeeya wali lama soo dejin.",
+      "Korontada iyo biyaha waa ku dhawaad $180. Gaadiidka $120. Raashinka $350. Waxaan sidoo kale leeyahay canshuurta daryeelka carruurta $200 bishiiba.",
     translatedText:
-      "I have the rent letter, but the latest paystub still has not been downloaded.",
+      "Utilities are around $180. Transport $120. Groceries $350. I also have childcare costs of $200 per month.",
     sourceLanguage: "so",
     targetLanguage: "en",
     confidence: 0.96,
@@ -206,12 +206,72 @@ export const transcriptItems: TranscriptItem[] = [
     speakerId: "p2",
     speakerName: "Sofia Chen",
     originalText:
-      "If we cannot confirm the paystub today, I will generate a checklist and a cover note for the case worker.",
+      "That puts total costs at roughly $2,500 — leaving a monthly shortfall of about $320. If the rent support subsidy of $400 is approved, you'd have a small surplus of $80. What does your income look like over the next year if your hours stay the same?",
     translatedText:
-      "If we cannot confirm the paystub today, I will generate a checklist and a cover note for the case worker.",
+      "That puts total costs at roughly $2,500 — leaving a monthly shortfall of about $320. If the rent support subsidy of $400 is approved, you'd have a small surplus of $80. What does your income look like over the next year if your hours stay the same?",
     sourceLanguage: "en",
     targetLanguage: "en",
+    confidence: 0.99,
+    type: "speech",
+  },
+  {
+    id: "t-5",
+    sessionId: activeSession.id,
+    timestamp: "10:21",
+    speakerId: "p1",
+    speakerName: "Amina Hassan",
+    originalText:
+      "Haddii saacadahaygii la iga dhimo, waxay noqon kartaa $1,900 bishiiba. Laakiin haddii aan helo shaqada wakhtiga buuxa ee la ballanqaaday, waxay ahaanaysaa $3,100.",
+    translatedText:
+      "If my hours are reduced it could drop to $1,900 a month. But if I get the full-time position that was promised, it would be $3,100.",
+    sourceLanguage: "so",
+    targetLanguage: "en",
     confidence: 0.95,
+    type: "speech",
+  },
+  {
+    id: "t-6",
+    sessionId: activeSession.id,
+    timestamp: "10:24",
+    speakerId: "p2",
+    speakerName: "Sofia Chen",
+    originalText:
+      "Let me model three scenarios then. Current income of $2,480 with the $320 gap. Reduced hours at $1,900 widening the gap to $600. And the full-time outcome at $3,100 giving a $600 surplus. The biggest risks I see are the missing paystub, the April 30th filing deadline, and childcare eligibility if your employment status changes.",
+    translatedText:
+      "Let me model three scenarios then. Current income of $2,480 with the $320 gap. Reduced hours at $1,900 widening the gap to $600. And the full-time outcome at $3,100 giving a $600 surplus. The biggest risks I see are the missing paystub, the April 30th filing deadline, and childcare eligibility if your employment status changes.",
+    sourceLanguage: "en",
+    targetLanguage: "en",
+    confidence: 0.99,
+    type: "speech",
+  },
+  {
+    id: "t-7",
+    sessionId: activeSession.id,
+    timestamp: "10:27",
+    speakerId: "p1",
+    speakerName: "Amina Hassan",
+    originalText:
+      "Waxaan rajeynayaa inaan helo jawaabta shaqada gudahood laba toddobaad. Haddaan helo, dakhligaygu sannadkan guud ahaan wuxuu noqon doonaa $34,000.",
+    translatedText:
+      "I expect to hear about the job within two weeks. If I get it, my total income this year should be around $34,000.",
+    sourceLanguage: "so",
+    targetLanguage: "en",
+    confidence: 0.94,
+    type: "speech",
+  },
+  {
+    id: "t-8",
+    sessionId: activeSession.id,
+    timestamp: "10:29",
+    speakerId: "p2",
+    speakerName: "Sofia Chen",
+    originalText:
+      "Good. I'll prepare the rent support application using the current $2,480 figure, flag the paystub as pending, and add a note about the potential income change. Priority actions are: get the paystub from your employer this week, confirm the April 30th deadline in writing, and we'll file the subsidy claim by April 25th to leave buffer time.",
+    translatedText:
+      "Good. I'll prepare the rent support application using the current $2,480 figure, flag the paystub as pending, and add a note about the potential income change. Priority actions are: get the paystub from your employer this week, confirm the April 30th deadline in writing, and we'll file the subsidy claim by April 25th to leave buffer time.",
+    sourceLanguage: "en",
+    targetLanguage: "en",
+    confidence: 0.99,
     type: "speech",
   },
 ];
