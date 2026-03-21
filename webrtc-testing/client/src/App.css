@@ -76,6 +76,44 @@ button {
   transition: transform 120ms ease, box-shadow 200ms ease;
 }
 
+.secondary {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--ink);
+  font-weight: 700;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+}
+
+.server-controls {
+  display: grid;
+  gap: 0.4rem;
+  max-width: 760px;
+}
+
+.server-controls label {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.server-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.server-row input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+  font-family: var(--font-mono);
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.9);
+}
+
 .primary:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 8px 20px rgba(2, 132, 199, 0.35);
@@ -183,5 +221,9 @@ video {
   .card,
   .video-card {
     border-radius: 14px;
+  }
+
+  .server-row {
+    flex-direction: column;
   }
 }

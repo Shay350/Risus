@@ -12,17 +12,48 @@ type SessionCreateResponse = {
 
 type JoinState = "idle" | "connecting" | "waiting" | "ready" | "connected" | "error";
 
-const serverUrl = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3000";
+const DEFAULT_SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3000";
+const SERVER_URL_STORAGE_KEY = "webrtcDemoServerUrl";
 const iceServers: RTCIceServer[] = [
   {
     urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"],
   },
 ];
 
-function parseJoinToken(): string | null {
+function normalizeServerUrl(value: string): string {
+  const parsed = new URL(value.trim());
+  parsed.pathname = "";
+  parsed.search = "";
+  parsed.hash = "";
+  return parsed.toString().replace(/\/$/, "");
+}
+
+function getStoredServerUrl(): string {
+  const stored = window.localStorage.getItem(SERVER_URL_STORAGE_KEY);
+  return stored && stored.length > 0 ? stored : DEFAULT_SERVER_URL;
+}
+
+function parseJoinConfig(): { token: string | null; serverUrl: string } {
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
-  return token && token.length > 0 ? token : null;
+  const serverFromQuery = params.get("server");
+  const serverUrl = serverFromQuery && serverFromQuery.length > 0 ? serverFromQuery : getStoredServerUrl();
+  return {
+    token: token && token.length > 0 ? token : null,
+    serverUrl,
+  };
+}
+
+function createLocalJoinLink(serverJoinLink: string, serverUrl: string): string {
+  const parsed = new URL(serverJoinLink);
+  const token = parsed.searchParams.get("token");
+  if (!token) {
+    return `${window.location.origin}/join`;
+  }
+  const params = new URLSearchParams();
+  params.set("token", token);
+  params.set("server", serverUrl);
+  return `${window.location.origin}/join?${params.toString()}`;
 }
 
 function isJoinRoute(): boolean {
@@ -37,12 +68,27 @@ function HomePage() {
   const [data, setData] = useState<SessionCreateResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [serverInput, setServerInput] = useState(getStoredServerUrl());
+  const [activeServerUrl, setActiveServerUrl] = useState(getStoredServerUrl());
+
+  const saveServerUrl = () => {
+    try {
+      const normalized = normalizeServerUrl(serverInput);
+      window.localStorage.setItem(SERVER_URL_STORAGE_KEY, normalized);
+      setActiveServerUrl(normalized);
+      setServerInput(normalized);
+      setError(null);
+    } catch {
+      setError("Server URL is invalid. Example: https://your-tunnel.ngrok-free.app");
+    }
+  };
 
   const createSession = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${serverUrl}/sessions`, {
+      const normalizedServerUrl = normalizeServerUrl(activeServerUrl);
+      const response = await fetch(`${normalizedServerUrl}/sessions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
@@ -50,7 +96,11 @@ function HomePage() {
         throw new Error(`Failed to create session (${response.status})`);
       }
       const payload = (await response.json()) as SessionCreateResponse;
-      setData(payload);
+      setData({
+        ...payload,
+        alphaLink: createLocalJoinLink(payload.alphaLink, normalizedServerUrl),
+        betaLink: createLocalJoinLink(payload.betaLink, normalizedServerUrl),
+      });
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unknown error");
     } finally {
@@ -67,6 +117,20 @@ function HomePage() {
           Create one session and share one link with Alpha and one with Beta. The signaling
           server enforces one participant per role.
         </p>
+        <div className="server-controls">
+          <label htmlFor="server-url">Signaling Server URL</label>
+          <div className="server-row">
+            <input
+              id="server-url"
+              value={serverInput}
+              onChange={(event) => setServerInput(event.target.value)}
+              placeholder="https://your-tunnel.ngrok-free.app"
+            />
+            <button className="secondary" onClick={saveServerUrl} type="button">
+              Save
+            </button>
+          </div>
+        </div>
         <button className="primary" onClick={createSession} disabled={loading}>
           {loading ? "Creating..." : "Create Session"}
         </button>
@@ -94,7 +158,9 @@ function HomePage() {
 }
 
 function JoinPage() {
-  const token = useMemo(() => parseJoinToken(), []);
+  const joinConfig = useMemo(() => parseJoinConfig(), []);
+  const token = joinConfig.token;
+  const serverUrl = joinConfig.serverUrl;
   const [joinState, setJoinState] = useState<JoinState>(token ? "idle" : "error");
   const [statusMessage, setStatusMessage] = useState<string>(
     token ? "Open your camera to begin." : "Missing token in URL.",
@@ -310,7 +376,7 @@ function JoinPage() {
       }
       roleRef.current = null;
     };
-  }, [token]);
+  }, [token, serverUrl]);
 
   return (
     <main className="shell">
@@ -320,6 +386,7 @@ function JoinPage() {
         <p className="lead">
           {role ? `You are ${role.toUpperCase()} in session ${sessionId}.` : "Validating link..."}
         </p>
+        <p className="mono">Signaling: {serverUrl}</p>
         <p className={`status status-${joinState}`}>{statusMessage}</p>
         {fatalError && <p className="error">{fatalError}</p>}
       </section>
