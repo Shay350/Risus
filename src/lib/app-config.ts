@@ -4,6 +4,7 @@ export const navItems = [
   { label: "Session", href: "/session" },
   { label: "Analysis", href: "/analysis" },
   { label: "Deliverables", href: "/deliverables" },
+  { label: "Client", href: "/client" },
 ] as const;
 
 export const routeMetadata = {
@@ -18,6 +19,10 @@ export const routeMetadata = {
   "/deliverables": {
     title: "Deliverables",
     description: "Unified output queue.",
+  },
+  "/client": {
+    title: "Client Dashboard",
+    description: "Simple view of session progress and prepared files.",
   },
 } as const;
 

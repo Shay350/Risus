@@ -1,6 +1,6 @@
 "use client";
 
-import { FileOutput, PhoneCall, Sparkles } from "lucide-react";
+import { FileOutput, LayoutDashboard, PhoneCall, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -33,6 +33,37 @@ interface SidebarNavProps {
 
 export function SidebarNav({ mobile = false, onNavigate }: SidebarNavProps) {
   const pathname = usePathname();
+  const isClientView = pathname.startsWith("/client");
+  const navigation = isClientView
+    ? [
+        {
+          href: "/client",
+          label: "Dashboard",
+          icon: LayoutDashboard,
+        },
+      ]
+    : [
+        {
+          href: "/session",
+          label: "Session",
+          icon: PhoneCall,
+        },
+        {
+          href: "/analysis",
+          label: "Analysis",
+          icon: Sparkles,
+        },
+        {
+          href: "/deliverables",
+          label: "Deliverables",
+          icon: FileOutput,
+        },
+        {
+          href: "/client",
+          label: "Client",
+          icon: LayoutDashboard,
+        },
+      ];
 
   return (
     <div className="flex h-full flex-col px-4 py-5">
@@ -43,7 +74,7 @@ export function SidebarNav({ mobile = false, onNavigate }: SidebarNavProps) {
               Risus
             </p>
             <h1 className="mt-2 text-lg font-semibold tracking-tight text-[var(--foreground)]">
-              Consultation tool
+              {isClientView ? "Client portal" : "Consultation tool"}
             </h1>
           </div>
           <StatusBadge tone="accent" pulse>
@@ -53,9 +84,11 @@ export function SidebarNav({ mobile = false, onNavigate }: SidebarNavProps) {
 
         <div className="rounded-2xl border border-[var(--border)] bg-white/85 p-4">
           <p className="text-sm font-medium text-[var(--foreground)]">
-            {activeSession.title}
+            {isClientView ? "Your support session" : activeSession.title}
           </p>
-          <p className="mt-1 text-sm text-[var(--muted)]">{organization.name}</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            {isClientView ? activeSession.participants[0]?.name : organization.name}
+          </p>
         </div>
       </div>
 
@@ -91,10 +124,12 @@ export function SidebarNav({ mobile = false, onNavigate }: SidebarNavProps) {
           )}
         >
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-            Current flow
+            {isClientView ? "This view" : "Current flow"}
           </p>
           <p className="mt-2 text-sm leading-6 text-[var(--foreground)]">
-            Call, review insights, then package deliverables.
+            {isClientView
+              ? "See translated updates and file progress without consultant-only controls."
+              : "Call, review insights, then package deliverables."}
           </p>
         </div>
       </div>

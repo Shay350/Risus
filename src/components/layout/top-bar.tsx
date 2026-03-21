@@ -4,7 +4,7 @@ import { Building2, Menu } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { organization } from "@/lib/mock-data";
+import { activeSession, organization } from "@/lib/mock-data";
 
 const routeCopy: Record<string, { title: string; description: string }> = {
   "/session": {
@@ -18,6 +18,10 @@ const routeCopy: Record<string, { title: string; description: string }> = {
   "/deliverables": {
     title: "Deliverables",
     description: "Unified output queue.",
+  },
+  "/client": {
+    title: "Client Dashboard",
+    description: "Simple view of session progress and prepared files.",
   },
 };
 
@@ -47,6 +51,11 @@ interface TopBarProps {
 export function TopBar({ onMenuClick }: TopBarProps) {
   const pathname = usePathname();
   const copy = getRouteCopy(pathname);
+  const isClientView = pathname.startsWith("/client");
+  const client =
+    activeSession.participants.find((participant) => participant.role === "client") ??
+    activeSession.participants[0];
+  const profileName = isClientView ? client.name : organization.consultantName;
 
   return (
     <div className="border-b border-[var(--border)] bg-white/70 px-4 py-4 backdrop-blur md:px-8">
@@ -82,11 +91,11 @@ export function TopBar({ onMenuClick }: TopBarProps) {
             type="button"
           >
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">
-              {initialsFromName(organization.consultantName)}
+              {initialsFromName(profileName)}
             </div>
             <div className="hidden text-left sm:block">
               <p className="text-sm font-medium text-[var(--foreground)]">
-                {organization.consultantName}
+                {profileName}
               </p>
             </div>
           </button>
