@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@theme {
+  --font-inter: "Inter", sans-serif;
+  --color-appBg: #1c1d1e;
+  --color-panelBg: #2a2d2e;
+  --color-activeGreen: #35c898;
+  --color-dangerRed: #e84e5b;
+}
+
 :root {
   --font-sans: "Manrope", "Segoe UI", sans-serif;
   --font-display: "Space Grotesk", "Segoe UI", sans-serif;
