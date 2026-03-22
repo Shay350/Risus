@@ -1,35 +1,11 @@
 "use client";
 
 import { Building2, Menu } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { organization } from "@/lib/mock-data";
-
-const routeCopy: Record<string, { title: string; description: string }> = {
-  "/session": {
-    title: "Session",
-    description: "Live call and language stream.",
-  },
-  "/analysis": {
-    title: "Analysis",
-    description: "Focused insight review.",
-  },
-  "/deliverables": {
-    title: "Deliverables",
-    description: "Unified output queue.",
-  },
-};
-
-function getRouteCopy(pathname: string) {
-  return (
-    routeCopy[pathname] ??
-    Object.entries(routeCopy).find(([route]) => pathname.startsWith(route))?.[1] ?? {
-      title: "Session",
-      description: "Live call and language stream.",
-    }
-  );
-}
+import { getRouteMetadata } from "@/lib/app-config";
+import { activeSession, organization } from "@/lib/mock-data";
 
 function initialsFromName(name: string) {
   return name
@@ -46,7 +22,14 @@ interface TopBarProps {
 
 export function TopBar({ onMenuClick }: TopBarProps) {
   const pathname = usePathname();
-  const copy = getRouteCopy(pathname);
+  const searchParams = useSearchParams();
+  const copy = getRouteMetadata(pathname);
+  const sessionRole = searchParams.get("role") === "client" ? "client" : "consultant";
+  const activePerson =
+    pathname.startsWith("/session") && sessionRole === "client"
+      ? activeSession.participants.find((participant) => participant.role === "client")
+          ?.name ?? "Client"
+      : organization.consultantName;
 
   return (
     <div className="border-b border-[var(--border)] bg-white/70 px-4 py-4 backdrop-blur md:px-8">
@@ -82,11 +65,11 @@ export function TopBar({ onMenuClick }: TopBarProps) {
             type="button"
           >
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">
-              {initialsFromName(organization.consultantName)}
+              {initialsFromName(activePerson)}
             </div>
             <div className="hidden text-left sm:block">
               <p className="text-sm font-medium text-[var(--foreground)]">
-                {organization.consultantName}
+                {activePerson}
               </p>
             </div>
           </button>

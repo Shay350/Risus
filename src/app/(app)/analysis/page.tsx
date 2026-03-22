@@ -1,14 +1,24 @@
 import Link from "next/link";
 
-import { GenerateProjections } from "@/components/workspace/generate-projections";
+import { AnalysisRuntime } from "@/components/workspace/analysis-runtime";
 import { Button } from "@/components/ui/button";
-import { activeSession, transcriptItems } from "@/lib/mock-data";
+import { resolveSession } from "@/lib/live-session";
+import { activeSession } from "@/lib/mock-data";
 
-const transcriptString = transcriptItems
-  .map((item) => `${item.speakerName}: ${item.translatedText ?? item.originalText}`)
-  .join("\n");
+interface AnalysisPageProps {
+  searchParams: Promise<{
+    sessionId?: string;
+  }>;
+}
 
-export default function AnalysisPage() {
+export default async function AnalysisPage({ searchParams }: AnalysisPageProps) {
+  const { sessionId } = await searchParams;
+  const resolvedSessionId =
+    typeof sessionId === "string" && sessionId.length > 0
+      ? sessionId
+      : activeSession.id;
+  const session = resolveSession(resolvedSessionId);
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-4 border-b border-[var(--border)] pb-6 md:flex-row md:items-end md:justify-between">
@@ -17,7 +27,7 @@ export default function AnalysisPage() {
             Analysis
           </p>
           <h1 className="text-3xl font-semibold tracking-tight text-[var(--foreground)]">
-            {activeSession.title}
+            {session.title}
           </h1>
           <p className="text-sm text-[var(--muted)]">
             Focused insight review from the current session.
@@ -25,16 +35,15 @@ export default function AnalysisPage() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Button asChild variant="outline">
-            <Link href="/session">Back to session</Link>
+            <Link href={`/session/${resolvedSessionId}?role=consultant`}>Back to session</Link>
           </Button>
           <Button asChild variant="secondary">
-            <Link href="/deliverables">Generate document</Link>
+            <Link href={`/deliverables?sessionId=${resolvedSessionId}`}>Generate document</Link>
           </Button>
         </div>
       </header>
 
-      <GenerateProjections transcript={transcriptString} />
+      <AnalysisRuntime sessionId={resolvedSessionId} />
     </div>
   );
 }
-

@@ -2,29 +2,11 @@
 
 import { FileOutput, PhoneCall, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { activeSession, organization } from "@/lib/mock-data";
-
-const navigation = [
-  {
-    href: "/session",
-    label: "Session",
-    icon: PhoneCall,
-  },
-  {
-    href: "/analysis",
-    label: "Analysis",
-    icon: Sparkles,
-  },
-  {
-    href: "/deliverables",
-    label: "Deliverables",
-    icon: FileOutput,
-  },
-];
 
 interface SidebarNavProps {
   mobile?: boolean;
@@ -33,6 +15,29 @@ interface SidebarNavProps {
 
 export function SidebarNav({ mobile = false, onNavigate }: SidebarNavProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const sessionRole = searchParams.get("role") === "client" ? "client" : "consultant";
+  const navigation = [
+    {
+      href: `/session/${activeSession.id}?role=${sessionRole}`,
+      label: "Session",
+      icon: PhoneCall,
+    },
+    ...(sessionRole === "client"
+      ? []
+      : [
+          {
+            href: "/analysis",
+            label: "Analysis",
+            icon: Sparkles,
+          },
+        ]),
+    {
+      href: "/deliverables",
+      label: "Deliverables",
+      icon: FileOutput,
+    },
+  ];
 
   return (
     <div className="flex h-full flex-col px-4 py-5">
@@ -61,7 +66,10 @@ export function SidebarNav({ mobile = false, onNavigate }: SidebarNavProps) {
 
       <nav className="flex-1 space-y-1 py-5">
         {navigation.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const active =
+            (item.href.startsWith("/session") && pathname.startsWith("/session")) ||
+            pathname === item.href ||
+            pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
 
           return (
@@ -94,7 +102,9 @@ export function SidebarNav({ mobile = false, onNavigate }: SidebarNavProps) {
             Current flow
           </p>
           <p className="mt-2 text-sm leading-6 text-[var(--foreground)]">
-            Call, review insights, then package deliverables.
+            {sessionRole === "client"
+              ? "Join the consultation and follow the translated output."
+              : "Live session, analysis, then deliverables."}
           </p>
         </div>
       </div>

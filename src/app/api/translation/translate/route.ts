@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
+import { sanitizeConversationalText } from "@/lib/transcript-safety";
 
 const LANGUAGE_NAMES: Record<string, string> = {
   af: "Afrikaans", sq: "Albanian", am: "Amharic", ar: "Arabic", hy: "Armenian",
@@ -30,9 +31,14 @@ export async function POST(req: NextRequest) {
   }
 
   const { text, sourceLang, targetLang } = await req.json();
+  const sanitizedText = sanitizeConversationalText(typeof text === "string" ? text : "");
 
-  if (!text || !targetLang) {
+  if (!targetLang) {
     return NextResponse.json({ error: "text and targetLang are required" }, { status: 400 });
+  }
+
+  if (!sanitizedText) {
+    return NextResponse.json({ translation: "" });
   }
 
   const sourceName = LANGUAGE_NAMES[sourceLang] ?? sourceLang;
@@ -43,13 +49,13 @@ export async function POST(req: NextRequest) {
 
     const result = await genAI.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: text,
+      contents: sanitizedText,
       config: {
-        systemInstruction: `You are a professional interpreter. Translate the user's text from ${sourceName} to ${targetName}. Return ONLY the translation — no explanations, no quotes, no extra text.`,
+        systemInstruction: `You are a professional interpreter. Translate spoken human dialogue from ${sourceName} to ${targetName}. Return ONLY the translated speech with no quotes, no labels, and no extra commentary. If the input is ambient sound, a stage direction, a transcription artifact, or a non-speech label such as "(background noise)", "[music]", "keyboard typing", or "cat meow", return an empty string.`,
       },
     });
 
-    const translation = result.text?.trim() ?? "";
+    const translation = sanitizeConversationalText(result.text ?? "");
     return NextResponse.json({ translation });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Translation failed";

@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { Suspense, type ReactNode, useState } from "react";
 
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { TopBar } from "@/components/layout/top-bar";
@@ -18,7 +18,9 @@ export function AppShell({ children }: AppShellProps) {
     <div className="min-h-screen bg-transparent text-[var(--foreground)]">
       <div className="flex min-h-screen">
         <aside className="app-panel-strong sticky top-0 hidden h-screen w-[248px] shrink-0 border-r border-[var(--border)] md:block">
-          <SidebarNav />
+          <Suspense fallback={<div className="h-full" />}>
+            <SidebarNav />
+          </Suspense>
         </aside>
 
         {mobileOpen ? (
@@ -41,13 +43,17 @@ export function AppShell({ children }: AppShellProps) {
                   <span className="sr-only">Close navigation</span>
                 </Button>
               </div>
-              <SidebarNav mobile onNavigate={() => setMobileOpen(false)} />
+              <Suspense fallback={<div className="h-full" />}>
+                <SidebarNav mobile onNavigate={() => setMobileOpen(false)} />
+              </Suspense>
             </aside>
           </div>
         ) : null}
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <TopBar onMenuClick={() => setMobileOpen(true)} />
+          <Suspense fallback={<div className="border-b border-[var(--border)] bg-white/70 px-4 py-4 md:px-8" />}>
+            <TopBar onMenuClick={() => setMobileOpen(true)} />
+          </Suspense>
           <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
             <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-6">
               {children}

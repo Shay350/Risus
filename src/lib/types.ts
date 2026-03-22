@@ -14,6 +14,8 @@ export type ParticipantRole =
   | "interpreter"
   | "observer";
 
+export type SessionRole = "consultant" | "client";
+
 export type SessionStatus =
   | "scheduled"
   | "live"
@@ -40,6 +42,15 @@ export type DocumentType = "uploaded" | "translated" | "generated";
 export type DeliverableStatus = "draft" | "processing" | "ready";
 
 export type DeliverableKind = "summary" | "document" | "packet";
+
+export type SessionUiState =
+  | "prejoin"
+  | "connecting"
+  | "waiting"
+  | "active"
+  | "reconnecting"
+  | "ended"
+  | "error";
 
 export interface Participant {
   id: string;
@@ -82,6 +93,19 @@ export interface TranscriptItem {
   targetLanguage?: LanguageCode;
   confidence: number;
   type: TranscriptItemType;
+}
+
+export interface LiveTranscriptSegment extends TranscriptItem {
+  speakerRole: SessionRole;
+  targetLanguage: LanguageCode;
+}
+
+export interface SessionConnectionConfig {
+  sessionId: string;
+  role: SessionRole;
+  signalServerUrl: string;
+  sourceLanguage: LanguageCode;
+  targetLanguage: LanguageCode;
 }
 
 export interface InsightMetric {

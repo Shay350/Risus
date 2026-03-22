@@ -5,10 +5,28 @@ import { createServer } from "node:http";
 import { Server, type Socket } from "socket.io";
 import { z } from "zod";
 
-type Role = "alpha" | "beta";
-type SocketContext = { role: Role };
+type SessionRole = "consultant" | "client";
+type LegacyRole = "alpha" | "beta";
+type SocketContext = {
+  sessionId: string;
+  role: SessionRole;
+};
+type RoomState = {
+  consultant?: string;
+  client?: string;
+  activeAt?: number;
+};
+type RoomStatus = "empty" | "one_present" | "ready" | "active";
 
-const roleSchema = z.union([z.literal("alpha"), z.literal("beta")]);
+const authSchema = z.object({
+  sessionId: z.string().min(1),
+  role: z.union([
+    z.literal("consultant"),
+    z.literal("client"),
+    z.literal("alpha"),
+    z.literal("beta"),
+  ]),
+});
 const offerSchema = z.object({ sdp: z.string().min(1), type: z.literal("offer") });
 const answerSchema = z.object({ sdp: z.string().min(1), type: z.literal("answer") });
 const iceCandidateSchema = z.object({
@@ -24,8 +42,22 @@ const mediaStateSchema = z.object({
 const voiceLevelSchema = z.object({
   level: z.number().min(0).max(1),
 });
+const transcriptSegmentSchema = z.object({
+  id: z.string().min(1),
+  sessionId: z.string().min(1),
+  speakerRole: z.union([z.literal("consultant"), z.literal("client")]),
+  speakerId: z.string().min(1),
+  speakerName: z.string().min(1),
+  sourceLanguage: z.string().min(1),
+  targetLanguage: z.string().min(1),
+  originalText: z.string().min(1),
+  translatedText: z.string().min(1),
+  timestamp: z.string().min(1),
+  confidence: z.number().min(0).max(1),
+  type: z.union([z.literal("speech"), z.literal("system"), z.literal("action")]),
+});
 
-const port = Number(process.env.PORT ?? 3000);
+const port = Number(process.env.PORT ?? 3001);
 const allowedOrigin = process.env.CORS_ORIGIN ?? "*";
 
 const app = express();
@@ -41,6 +73,8 @@ app.use(express.json());
 const rateLimitWindowMs = 60_000;
 const rateLimitMax = 60;
 const requestLog = new Map<string, number[]>();
+const rooms = new Map<string, RoomState>();
+const socketContexts = new Map<string, SocketContext>();
 
 function rateLimit(req: Request, res: Response, next: NextFunction): void {
   const key = req.ip ?? "unknown";
@@ -56,32 +90,97 @@ function rateLimit(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
-let alphaSocketId: string | undefined;
-let betaSocketId: string | undefined;
-let activeAt: number | undefined;
-const socketContexts = new Map<string, SocketContext>();
-
-function getSocketByRole(io: Server, role: Role): Socket | undefined {
-  const socketId = role === "alpha" ? alphaSocketId : betaSocketId;
-  return socketId ? io.sockets.sockets.get(socketId) : undefined;
+function normalizeRole(role: SessionRole | LegacyRole): SessionRole {
+  if (role === "alpha") {
+    return "consultant";
+  }
+  if (role === "beta") {
+    return "client";
+  }
+  return role;
 }
 
-function otherRole(role: Role): Role {
-  return role === "alpha" ? "beta" : "alpha";
+function otherRole(role: SessionRole): SessionRole {
+  return role === "consultant" ? "client" : "consultant";
 }
 
 function safeEmitError(socket: Socket, code: string, message: string): void {
   socket.emit("signal-error", { code, message });
 }
 
-function occupancyStatus(): "empty" | "one_present" | "ready" | "active" {
-  const hasAlpha = Boolean(alphaSocketId);
-  const hasBeta = Boolean(betaSocketId);
-  if (!hasAlpha && !hasBeta) {
+function getRoom(sessionId: string): RoomState {
+  const room = rooms.get(sessionId);
+  if (room) {
+    return room;
+  }
+  const nextRoom: RoomState = {};
+  rooms.set(sessionId, nextRoom);
+  return nextRoom;
+}
+
+function getSocketByRole(io: Server, sessionId: string, role: SessionRole): Socket | undefined {
+  const room = rooms.get(sessionId);
+  const socketId = room?.[role];
+  return socketId ? io.sockets.sockets.get(socketId) : undefined;
+}
+
+function roomStatus(room: RoomState): RoomStatus {
+  const hasConsultant = Boolean(room.consultant);
+  const hasClient = Boolean(room.client);
+  if (!hasConsultant && !hasClient) {
     return "empty";
   }
-  if (hasAlpha && hasBeta) {
-    return activeAt ? "active" : "ready";
+  if (hasConsultant && hasClient) {
+    return room.activeAt ? "active" : "ready";
+  }
+  return "one_present";
+}
+
+function pruneStaleRole(sessionId: string, role: SessionRole, io: Server): void {
+  const room = rooms.get(sessionId);
+  if (!room) {
+    return;
+  }
+  const socketId = room[role];
+  if (!socketId) {
+    return;
+  }
+  if (!io.sockets.sockets.has(socketId)) {
+    delete room[role];
+  }
+  if (!room.consultant && !room.client) {
+    rooms.delete(sessionId);
+  }
+}
+
+function getRoomSnapshots(): Array<{
+  sessionId: string;
+  consultant: boolean;
+  client: boolean;
+  activeAt: number | null;
+  status: RoomStatus;
+}> {
+  return Array.from(rooms.entries())
+    .map(([sessionId, room]) => ({
+      sessionId,
+      consultant: Boolean(room.consultant),
+      client: Boolean(room.client),
+      activeAt: room.activeAt ?? null,
+      status: roomStatus(room),
+    }))
+    .sort((left, right) => left.sessionId.localeCompare(right.sessionId));
+}
+
+function aggregateStatus(): RoomStatus {
+  const snapshots = getRoomSnapshots();
+  if (snapshots.length === 0) {
+    return "empty";
+  }
+  if (snapshots.some((snapshot) => snapshot.status === "active")) {
+    return "active";
+  }
+  if (snapshots.some((snapshot) => snapshot.status === "ready")) {
+    return "ready";
   }
   return "one_present";
 }
@@ -89,18 +188,17 @@ function occupancyStatus(): "empty" | "one_present" | "ready" | "active" {
 app.get("/health", (_req, res) => {
   res.json({
     ok: true,
-    status: occupancyStatus(),
-    hasAlpha: Boolean(alphaSocketId),
-    hasBeta: Boolean(betaSocketId),
+    status: aggregateStatus(),
+    roomCount: rooms.size,
+    rooms: getRoomSnapshots(),
   });
 });
 
 app.get("/status", rateLimit, (_req, res) => {
   res.json({
-    status: occupancyStatus(),
-    hasAlpha: Boolean(alphaSocketId),
-    hasBeta: Boolean(betaSocketId),
-    activeAt: activeAt ?? null,
+    status: aggregateStatus(),
+    roomCount: rooms.size,
+    rooms: getRoomSnapshots(),
   });
 });
 
@@ -123,28 +221,25 @@ io.use((socket, next) => {
   windowed.push(now);
   socketRateLog.set(ip, windowed);
 
-  const parsedRole = roleSchema.safeParse(socket.handshake.auth.role);
-  if (!parsedRole.success) {
-    next(new Error("invalid_role"));
+  const parsedAuth = authSchema.safeParse(socket.handshake.auth);
+  if (!parsedAuth.success) {
+    next(new Error("invalid_session_or_role"));
     return;
   }
-  const role = parsedRole.data;
 
-  const occupantSocketId = role === "alpha" ? alphaSocketId : betaSocketId;
-  if (occupantSocketId) {
-    const occupant = io.sockets.sockets.get(occupantSocketId);
-    if (occupant) {
-      next(new Error(`role_occupied:${role}`));
-      return;
-    }
+  const sessionId = parsedAuth.data.sessionId.trim();
+  const role = normalizeRole(parsedAuth.data.role);
+  const room = getRoom(sessionId);
+  pruneStaleRole(sessionId, role, io);
+
+  if (room[role]) {
+    next(new Error(`role_occupied:${role}`));
+    return;
   }
 
-  if (role === "alpha") {
-    alphaSocketId = socket.id;
-  } else {
-    betaSocketId = socket.id;
-  }
-  socketContexts.set(socket.id, { role });
+  room[role] = socket.id;
+  socketContexts.set(socket.id, { sessionId, role });
+  socket.data.sessionId = sessionId;
   socket.data.role = role;
   next();
 });
@@ -156,17 +251,20 @@ io.on("connection", (socket) => {
     return;
   }
 
-  const { role } = context;
+  const { sessionId, role } = context;
   // eslint-disable-next-line no-console
-  console.log(JSON.stringify({ event: "connected", role, socketId: socket.id }));
+  console.log(JSON.stringify({ event: "connected", role, sessionId, socketId: socket.id }));
 
-  socket.emit("joined", { role });
-  const counterpart = getSocketByRole(io, otherRole(role));
+  socket.emit("joined", { sessionId, role });
+  const counterpart = getSocketByRole(io, sessionId, otherRole(role));
   if (counterpart) {
-    socket.emit("peer-ready", {});
-    counterpart.emit("peer-ready", {});
+    socket.emit("peer-ready", { sessionId, role });
+    counterpart.emit("peer-ready", { sessionId, role: otherRole(role) });
   } else {
-    socket.emit("waiting", { message: "Waiting for the other role to connect" });
+    socket.emit("waiting", {
+      sessionId,
+      message: "Waiting for the other role to connect",
+    });
   }
 
   socket.on("offer", (payload: unknown) => {
@@ -175,12 +273,13 @@ io.on("connection", (socket) => {
       safeEmitError(socket, "bad_offer_payload", "Offer payload is invalid");
       return;
     }
-    const target = getSocketByRole(io, otherRole(role));
+    const target = getSocketByRole(io, sessionId, otherRole(role));
     if (!target) {
       safeEmitError(socket, "peer_not_connected", "Peer is not connected");
       return;
     }
-    activeAt = activeAt ?? Date.now();
+    const room = getRoom(sessionId);
+    room.activeAt = room.activeAt ?? Date.now();
     target.emit("offer", parsed.data);
   });
 
@@ -190,12 +289,13 @@ io.on("connection", (socket) => {
       safeEmitError(socket, "bad_answer_payload", "Answer payload is invalid");
       return;
     }
-    const target = getSocketByRole(io, otherRole(role));
+    const target = getSocketByRole(io, sessionId, otherRole(role));
     if (!target) {
       safeEmitError(socket, "peer_not_connected", "Peer is not connected");
       return;
     }
-    activeAt = activeAt ?? Date.now();
+    const room = getRoom(sessionId);
+    room.activeAt = room.activeAt ?? Date.now();
     target.emit("answer", parsed.data);
   });
 
@@ -205,7 +305,7 @@ io.on("connection", (socket) => {
       safeEmitError(socket, "bad_ice_payload", "ICE candidate payload is invalid");
       return;
     }
-    const target = getSocketByRole(io, otherRole(role));
+    const target = getSocketByRole(io, sessionId, otherRole(role));
     if (!target) {
       return;
     }
@@ -218,7 +318,7 @@ io.on("connection", (socket) => {
       safeEmitError(socket, "bad_media_state", "Media state payload is invalid");
       return;
     }
-    const target = getSocketByRole(io, otherRole(role));
+    const target = getSocketByRole(io, sessionId, otherRole(role));
     if (!target) {
       return;
     }
@@ -231,11 +331,25 @@ io.on("connection", (socket) => {
       safeEmitError(socket, "bad_voice_level", "Voice level payload is invalid");
       return;
     }
-    const target = getSocketByRole(io, otherRole(role));
+    const target = getSocketByRole(io, sessionId, otherRole(role));
     if (!target) {
       return;
     }
     target.emit("peer-voice-level", parsed.data);
+  });
+
+  socket.on("transcript-segment", (payload: unknown) => {
+    const parsed = transcriptSegmentSchema.safeParse(payload);
+    if (!parsed.success) {
+      safeEmitError(socket, "bad_transcript_segment_payload", "Transcript segment payload is invalid");
+      return;
+    }
+    socket.emit("transcript-segment", parsed.data);
+    const target = getSocketByRole(io, sessionId, otherRole(role));
+    if (!target) {
+      return;
+    }
+    target.emit("transcript-segment", parsed.data);
   });
 
   socket.on("leave", () => {
@@ -248,23 +362,31 @@ io.on("connection", (socket) => {
       return;
     }
 
-    if (disconnectedContext.role === "alpha" && alphaSocketId === socket.id) {
-      alphaSocketId = undefined;
+    const room = rooms.get(disconnectedContext.sessionId);
+    if (room && room[disconnectedContext.role] === socket.id) {
+      delete room[disconnectedContext.role];
     }
-    if (disconnectedContext.role === "beta" && betaSocketId === socket.id) {
-      betaSocketId = undefined;
-    }
-    if (!alphaSocketId && !betaSocketId) {
-      activeAt = undefined;
+    if (room && !room.consultant && !room.client) {
+      rooms.delete(disconnectedContext.sessionId);
     }
 
-    const target = getSocketByRole(io, otherRole(disconnectedContext.role));
+    const target = getSocketByRole(io, disconnectedContext.sessionId, otherRole(disconnectedContext.role));
     if (target) {
-      target.emit("peer-left", { role: disconnectedContext.role });
+      target.emit("peer-left", {
+        sessionId: disconnectedContext.sessionId,
+        role: disconnectedContext.role,
+      });
     }
 
     // eslint-disable-next-line no-console
-    console.log(JSON.stringify({ event: "disconnected", role: disconnectedContext.role, socketId: socket.id }));
+    console.log(
+      JSON.stringify({
+        event: "disconnected",
+        role: disconnectedContext.role,
+        sessionId: disconnectedContext.sessionId,
+        socketId: socket.id,
+      }),
+    );
     socketContexts.delete(socket.id);
   });
 });

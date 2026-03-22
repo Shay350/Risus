@@ -1,41 +1,71 @@
-import { Camera, Captions, Languages, Mic, PhoneOff, Sparkles } from "lucide-react";
+import { Languages, Mic, MicOff, PhoneOff, Sparkles, Video, VideoOff } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 
-export function CallControls() {
+interface CallControlsProps {
+  micMuted: boolean;
+  cameraOff: boolean;
+  translationEnabled: boolean;
+  onToggleMic: () => void;
+  onToggleCamera: () => void;
+  onToggleTranslation: () => void;
+  onEndCall: () => void;
+  showPrimaryAction?: boolean;
+  primaryActionHref?: string;
+  primaryActionLabel?: string;
+}
+
+export function CallControls({
+  micMuted,
+  cameraOff,
+  translationEnabled,
+  onToggleMic,
+  onToggleCamera,
+  onToggleTranslation,
+  onEndCall,
+  showPrimaryAction = false,
+  primaryActionHref = "/analysis",
+  primaryActionLabel = "Generate insights",
+}: CallControlsProps) {
   return (
     <div className="app-panel-strong sticky bottom-4 rounded-[24px] p-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="outline">
-            <Mic className="h-4 w-4" />
-            Mic
+          <Button onClick={onToggleMic} size="sm" variant={micMuted ? "outline" : "secondary"}>
+            {micMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            {micMuted ? "Unmute" : "Mute"}
           </Button>
-          <Button size="sm" variant="outline">
-            <Camera className="h-4 w-4" />
-            Camera
+          <Button
+            onClick={onToggleCamera}
+            size="sm"
+            variant={cameraOff ? "outline" : "secondary"}
+          >
+            {cameraOff ? <VideoOff className="h-4 w-4" /> : <Video className="h-4 w-4" />}
+            {cameraOff ? "Camera on" : "Camera off"}
           </Button>
-          <Button size="sm" variant="outline">
-            <Captions className="h-4 w-4" />
-            Captions
-          </Button>
-          <Button size="sm" variant="outline">
+          <Button
+            onClick={onToggleTranslation}
+            size="sm"
+            variant={translationEnabled ? "secondary" : "outline"}
+          >
             <Languages className="h-4 w-4" />
-            Translate
+            {translationEnabled ? "Translation on" : "Translation off"}
           </Button>
-          <Button size="sm" variant="danger">
+          <Button onClick={onEndCall} size="sm" variant="danger">
             <PhoneOff className="h-4 w-4" />
             End
           </Button>
         </div>
 
-        <Button asChild variant="secondary">
-          <Link href="/analysis">
-            <Sparkles className="h-4 w-4" />
-            Generate insights
-          </Link>
-        </Button>
+        {showPrimaryAction ? (
+          <Button asChild variant="secondary">
+            <Link href={primaryActionHref}>
+              <Sparkles className="h-4 w-4" />
+              {primaryActionLabel}
+            </Link>
+          </Button>
+        ) : null}
       </div>
     </div>
   );
