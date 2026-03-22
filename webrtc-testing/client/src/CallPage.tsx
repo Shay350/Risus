@@ -23,6 +23,7 @@ type CallPageProps = {
   onHangup: () => void;
   localName: string;
   remoteName: string;
+  callDurationLabel: string;
 };
 
 const transcript: TranscriptMessage[] = [
@@ -85,6 +86,7 @@ const VideoCall = ({
   onHangup,
   localName,
   remoteName,
+  callDurationLabel,
 }: CallPageProps) => {
   const localMicOn = !isMuted;
   const localVideoOn = !isVideoOff;
@@ -95,7 +97,7 @@ const VideoCall = ({
         <div className="flex justify-between items-center px-6 py-5 w-full z-10">
           <h1 className="font-bold tracking-wide text-gray-100 text-xl">Consulting consultations</h1>
           <div className="text-sm text-gray-300 font-medium tracking-wide bg-panelBg px-3 py-1.5 rounded-lg">
-            00:34:12
+            {callDurationLabel}
           </div>
         </div>
 

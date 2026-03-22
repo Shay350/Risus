@@ -139,6 +139,20 @@ function isJoinRoute(): boolean {
   return window.location.pathname.startsWith("/join/");
 }
 
+function formatDuration(totalSeconds: number): string {
+  const normalized = Math.max(0, totalSeconds);
+  const hours = Math.floor(normalized / 3600)
+    .toString()
+    .padStart(2, "0");
+  const minutes = Math.floor((normalized % 3600) / 60)
+    .toString()
+    .padStart(2, "0");
+  const seconds = Math.floor(normalized % 60)
+    .toString()
+    .padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
+}
+
 function App() {
   return isJoinRoute() ? <JoinPage /> : <HomePage />;
 }
@@ -337,6 +351,7 @@ function JoinPage() {
   const [remoteVideoOn, setRemoteVideoOn] = useState(false);
   const [localVoiceLevel, setLocalVoiceLevel] = useState(0);
   const [remoteVoiceLevel, setRemoteVoiceLevel] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -348,8 +363,10 @@ function JoinPage() {
   const voiceIntervalRef = useRef<number | null>(null);
   const isMutedRef = useRef(false);
   const isVideoOffRef = useRef(false);
+  const callStartRef = useRef<number | null>(null);
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
   const makingOfferRef = useRef(false);
+  const callTimerIntervalRef = useRef<number | null>(null);
 
   const emitMediaState = useCallback((micOn: boolean, videoOn: boolean) => {
     socketRef.current?.emit("media-state", { micOn, videoOn });
@@ -375,6 +392,8 @@ function JoinPage() {
     setRemoteMicOn(true);
     setRemoteVideoOn(false);
     setRemoteVoiceLevel(0);
+    callStartRef.current = null;
+    setElapsedSeconds(0);
     pendingIceRef.current = [];
   }, []);
 
@@ -520,6 +539,8 @@ function JoinPage() {
           setRemoteMicOn(true);
           setRemoteVideoOn(false);
           setRemoteVoiceLevel(0);
+          callStartRef.current = null;
+          setElapsedSeconds(0);
           setIsMuted(false);
           setIsVideoOff(false);
           if (localStreamRef.current) {
@@ -594,6 +615,8 @@ function JoinPage() {
         socket.on("peer-left", () => {
           setJoinState("waiting");
           setStatusMessage("Peer disconnected. Waiting for them to return...");
+          callStartRef.current = null;
+          setElapsedSeconds(0);
           closePeer();
         });
 
@@ -647,6 +670,10 @@ function JoinPage() {
       socketRef.current?.emit("leave");
       socketRef.current?.disconnect();
       closePeer();
+      if (callTimerIntervalRef.current !== null) {
+        window.clearInterval(callTimerIntervalRef.current);
+        callTimerIntervalRef.current = null;
+      }
       if (voiceIntervalRef.current !== null) {
         window.clearInterval(voiceIntervalRef.current);
         voiceIntervalRef.current = null;
@@ -718,6 +745,8 @@ function JoinPage() {
     }
     setLocalVoiceLevel(0);
     setRemoteVoiceLevel(0);
+    callStartRef.current = null;
+    setElapsedSeconds(0);
     setJoinState("waiting");
     setStatusMessage(
       "Call ended. Reopen your deterministic role link to rejoin.",
@@ -734,6 +763,44 @@ function JoinPage() {
   const remoteSpeaking =
     effectiveRemoteLevel > voiceThreshold &&
     effectiveRemoteLevel > effectiveLocalLevel + voiceDelta;
+
+  useEffect(() => {
+    if (joinState === "connected") {
+      if (callStartRef.current === null) {
+        callStartRef.current = Date.now();
+      }
+      if (callTimerIntervalRef.current === null) {
+        callTimerIntervalRef.current = window.setInterval(() => {
+          setElapsedSeconds((current) => {
+            const start = callStartRef.current ?? Date.now();
+            const next = Math.floor((Date.now() - start) / 1000);
+            return next === current ? current : next;
+          });
+        }, 1000);
+      }
+      return;
+    }
+
+    if (callTimerIntervalRef.current !== null) {
+      window.clearInterval(callTimerIntervalRef.current);
+      callTimerIntervalRef.current = null;
+    }
+    if (joinState !== "ready") {
+      callStartRef.current = null;
+      setElapsedSeconds(0);
+    }
+  }, [joinState]);
+
+  useEffect(() => {
+    return () => {
+      if (callTimerIntervalRef.current !== null) {
+        window.clearInterval(callTimerIntervalRef.current);
+        callTimerIntervalRef.current = null;
+      }
+    };
+  }, []);
+
+  const callDurationLabel = formatDuration(elapsedSeconds);
 
   useEffect(() => {
     if (localVideoRef.current && localStreamRef.current) {
@@ -760,6 +827,7 @@ function JoinPage() {
         onHangup={hangup}
         localName={role === "alpha" ? "Alpha" : "Beta"}
         remoteName={role === "alpha" ? "Beta" : "Alpha"}
+        callDurationLabel={callDurationLabel}
       />
     );
   }
