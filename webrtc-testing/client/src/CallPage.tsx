@@ -1,6 +1,7 @@
 import { useEffect, useState, type RefObject } from "react";
 import { Mic, MicOff, Video, VideoOff, Paperclip, Phone } from "lucide-react";
 import AvatarFallback from "./components/AvatarFallback";
+import PeerDisconnectedOverlay from "./components/PeerDisconnectedOverlay";
 
 type TranscriptMessage = {
   id: number;
@@ -18,6 +19,7 @@ type CallPageProps = {
   remoteVideoOn: boolean;
   localSpeaking: boolean;
   remoteSpeaking: boolean;
+  peerReconnecting: boolean;
   onToggleMute: () => void;
   onToggleVideo: () => void;
   onHangup: () => void;
@@ -99,6 +101,7 @@ const VideoCall = ({
   remoteVideoOn,
   localSpeaking,
   remoteSpeaking,
+  peerReconnecting,
   onToggleMute,
   onToggleVideo,
   onHangup,
@@ -192,6 +195,8 @@ const VideoCall = ({
                 <MicOff size={14} className="text-gray-400" />
               </div>
             )}
+
+            {peerReconnecting && <PeerDisconnectedOverlay />}
           </div>
         </div>
 

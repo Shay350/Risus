@@ -238,6 +238,14 @@ io.on("connection", (socket) => {
     target.emit("peer-voice-level", parsed.data);
   });
 
+  socket.on("end-call", () => {
+    socket.data.endedCall = true;
+    const target = getSocketByRole(io, otherRole(role));
+    if (target) {
+      target.emit("call-ended", { role });
+    }
+  });
+
   socket.on("leave", () => {
     socket.disconnect(true);
   });
@@ -259,7 +267,7 @@ io.on("connection", (socket) => {
     }
 
     const target = getSocketByRole(io, otherRole(disconnectedContext.role));
-    if (target) {
+    if (target && socket.data.endedCall !== true) {
       target.emit("peer-left", { role: disconnectedContext.role });
     }
 
