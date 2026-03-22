@@ -301,6 +301,8 @@ function JoinPage() {
   const serverUrl = joinConfig.serverUrl;
   const stableMode = joinConfig.stableMode;
   const hasTurn = joinConfig.turnUrls.length > 0;
+  const voiceThreshold = 0.06;
+  const voiceDelta = 0.015;
   const iceServers = useMemo<RTCIceServer[]>(() => {
     if (hasTurn) {
       return [
@@ -331,7 +333,10 @@ function JoinPage() {
   const [fatalError, setFatalError] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
-  const [remoteVideoReady, setRemoteVideoReady] = useState(false);
+  const [remoteMicOn, setRemoteMicOn] = useState(true);
+  const [remoteVideoOn, setRemoteVideoOn] = useState(false);
+  const [localVoiceLevel, setLocalVoiceLevel] = useState(0);
+  const [remoteVoiceLevel, setRemoteVoiceLevel] = useState(0);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -339,8 +344,24 @@ function JoinPage() {
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const voiceIntervalRef = useRef<number | null>(null);
+  const isMutedRef = useRef(false);
+  const isVideoOffRef = useRef(false);
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
   const makingOfferRef = useRef(false);
+
+  const emitMediaState = useCallback((micOn: boolean, videoOn: boolean) => {
+    socketRef.current?.emit("media-state", { micOn, videoOn });
+  }, []);
+
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
+
+  useEffect(() => {
+    isVideoOffRef.current = isVideoOff;
+  }, [isVideoOff]);
 
   const closePeer = useCallback(() => {
     if (peerRef.current) {
@@ -351,7 +372,9 @@ function JoinPage() {
       remoteVideoRef.current.srcObject = null;
     }
     remoteStreamRef.current = null;
-    setRemoteVideoReady(false);
+    setRemoteMicOn(true);
+    setRemoteVideoOn(false);
+    setRemoteVoiceLevel(0);
     pendingIceRef.current = [];
   }, []);
 
@@ -392,7 +415,6 @@ function JoinPage() {
       remoteStreamRef.current = stream ?? null;
       if (remoteVideoRef.current && stream) {
         remoteVideoRef.current.srcObject = stream;
-        setRemoteVideoReady(true);
       }
     };
 
@@ -455,6 +477,28 @@ function JoinPage() {
           localVideoRef.current.srcObject = stream;
         }
 
+        const audioContext = new AudioContext();
+        audioContextRef.current = audioContext;
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+        const bins = new Uint8Array(analyser.fftSize);
+        let smoothedLevel = 0;
+        voiceIntervalRef.current = window.setInterval(() => {
+          analyser.getByteTimeDomainData(bins);
+          let sum = 0;
+          for (const sample of bins) {
+            const normalized = (sample - 128) / 128;
+            sum += normalized * normalized;
+          }
+          const rms = Math.sqrt(sum / bins.length);
+          smoothedLevel = smoothedLevel * 0.72 + rms * 0.28;
+          const level = isMutedRef.current ? 0 : Math.min(1, smoothedLevel * 6);
+          setLocalVoiceLevel(level);
+          socketRef.current?.emit("voice-level", { level });
+        }, 120);
+
         setStatusMessage(
           "Local media ready. Connecting to signaling server...",
         );
@@ -473,7 +517,9 @@ function JoinPage() {
           setStatusMessage(`Joined as ${payload.role.toUpperCase()}.`);
           setJoinState("connecting");
           setFatalError(null);
-          setRemoteVideoReady(false);
+          setRemoteMicOn(true);
+          setRemoteVideoOn(false);
+          setRemoteVoiceLevel(0);
           setIsMuted(false);
           setIsVideoOff(false);
           if (localStreamRef.current) {
@@ -484,6 +530,9 @@ function JoinPage() {
               track.enabled = true;
             });
           }
+          isMutedRef.current = false;
+          isVideoOffRef.current = false;
+          emitMediaState(true, true);
         });
 
         socket.on("waiting", () => {
@@ -494,6 +543,7 @@ function JoinPage() {
         socket.on("peer-ready", async () => {
           setJoinState("ready");
           setStatusMessage("Peer ready. Negotiating connection...");
+          emitMediaState(!isMutedRef.current, !isVideoOffRef.current);
           const peer = ensurePeer();
           if (role !== "alpha") {
             return;
@@ -547,6 +597,21 @@ function JoinPage() {
           closePeer();
         });
 
+        socket.on("peer-media-state", (payload: { micOn: boolean; videoOn: boolean }) => {
+          setRemoteMicOn(payload.micOn);
+          setRemoteVideoOn(payload.videoOn);
+          if (!payload.micOn) {
+            setRemoteVoiceLevel(0);
+          }
+        });
+
+        socket.on("peer-voice-level", (payload: { level: number }) => {
+          const next = Number.isFinite(payload.level)
+            ? Math.max(0, Math.min(1, payload.level))
+            : 0;
+          setRemoteVoiceLevel(next);
+        });
+
         socket.on(
           "signal-error",
           (payload: { code: string; message: string }) => {
@@ -582,12 +647,31 @@ function JoinPage() {
       socketRef.current?.emit("leave");
       socketRef.current?.disconnect();
       closePeer();
+      if (voiceIntervalRef.current !== null) {
+        window.clearInterval(voiceIntervalRef.current);
+        voiceIntervalRef.current = null;
+      }
+      if (audioContextRef.current) {
+        void audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+      setLocalVoiceLevel(0);
+      setRemoteVoiceLevel(0);
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
         localStreamRef.current = null;
       }
     };
-  }, [role, serverUrl, stableMode, hasTurn, iceServers, ensurePeer, closePeer]);
+  }, [
+    role,
+    serverUrl,
+    stableMode,
+    hasTurn,
+    iceServers,
+    ensurePeer,
+    closePeer,
+    emitMediaState,
+  ]);
 
   const toggleMute = useCallback(() => {
     const stream = localStreamRef.current;
@@ -599,7 +683,12 @@ function JoinPage() {
       track.enabled = !nextMuted;
     });
     setIsMuted(nextMuted);
-  }, [isMuted]);
+    if (nextMuted) {
+      setLocalVoiceLevel(0);
+      socketRef.current?.emit("voice-level", { level: 0 });
+    }
+    emitMediaState(!nextMuted, !isVideoOff);
+  }, [emitMediaState, isMuted, isVideoOff]);
 
   const toggleVideo = useCallback(() => {
     const stream = localStreamRef.current;
@@ -611,12 +700,24 @@ function JoinPage() {
       track.enabled = !nextVideoOff;
     });
     setIsVideoOff(nextVideoOff);
-  }, [isVideoOff]);
+    emitMediaState(!isMuted, !nextVideoOff);
+  }, [emitMediaState, isMuted, isVideoOff]);
 
   const hangup = useCallback(() => {
     socketRef.current?.emit("leave");
     socketRef.current?.disconnect();
+    socketRef.current = null;
     closePeer();
+    if (voiceIntervalRef.current !== null) {
+      window.clearInterval(voiceIntervalRef.current);
+      voiceIntervalRef.current = null;
+    }
+    if (audioContextRef.current) {
+      void audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    setLocalVoiceLevel(0);
+    setRemoteVoiceLevel(0);
     setJoinState("waiting");
     setStatusMessage(
       "Call ended. Reopen your deterministic role link to rejoin.",
@@ -625,26 +726,35 @@ function JoinPage() {
 
   const showCallPage = joinState === "ready" || joinState === "connected";
 
+  const effectiveLocalLevel = isMuted ? 0 : localVoiceLevel;
+  const effectiveRemoteLevel = remoteMicOn ? remoteVoiceLevel : 0;
+  const localSpeaking =
+    effectiveLocalLevel > voiceThreshold &&
+    effectiveLocalLevel > effectiveRemoteLevel + voiceDelta;
+  const remoteSpeaking =
+    effectiveRemoteLevel > voiceThreshold &&
+    effectiveRemoteLevel > effectiveLocalLevel + voiceDelta;
+
   useEffect(() => {
     if (localVideoRef.current && localStreamRef.current) {
       localVideoRef.current.srcObject = localStreamRef.current;
     }
     if (remoteVideoRef.current && remoteStreamRef.current) {
       remoteVideoRef.current.srcObject = remoteStreamRef.current;
-      if (!remoteVideoReady) {
-        setRemoteVideoReady(true);
-      }
     }
-  }, [showCallPage, remoteVideoReady]);
+  }, [showCallPage]);
 
   if (showCallPage && role) {
     return (
       <CallPage
         localVideoRef={localVideoRef}
         remoteVideoRef={remoteVideoRef}
-        remoteVideoReady={remoteVideoReady}
         isMuted={isMuted}
         isVideoOff={isVideoOff}
+        remoteMicOn={remoteMicOn}
+        remoteVideoOn={remoteVideoOn}
+        localSpeaking={localSpeaking}
+        remoteSpeaking={remoteSpeaking}
         onToggleMute={toggleMute}
         onToggleVideo={toggleVideo}
         onHangup={hangup}

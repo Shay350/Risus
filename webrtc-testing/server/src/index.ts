@@ -17,6 +17,13 @@ const iceCandidateSchema = z.object({
   sdpMLineIndex: z.number().nullable().optional(),
   usernameFragment: z.string().nullable().optional(),
 });
+const mediaStateSchema = z.object({
+  micOn: z.boolean(),
+  videoOn: z.boolean(),
+});
+const voiceLevelSchema = z.object({
+  level: z.number().min(0).max(1),
+});
 
 const port = Number(process.env.PORT ?? 3000);
 const allowedOrigin = process.env.CORS_ORIGIN ?? "*";
@@ -203,6 +210,32 @@ io.on("connection", (socket) => {
       return;
     }
     target.emit("ice-candidate", parsed.data);
+  });
+
+  socket.on("media-state", (payload: unknown) => {
+    const parsed = mediaStateSchema.safeParse(payload);
+    if (!parsed.success) {
+      safeEmitError(socket, "bad_media_state", "Media state payload is invalid");
+      return;
+    }
+    const target = getSocketByRole(io, otherRole(role));
+    if (!target) {
+      return;
+    }
+    target.emit("peer-media-state", parsed.data);
+  });
+
+  socket.on("voice-level", (payload: unknown) => {
+    const parsed = voiceLevelSchema.safeParse(payload);
+    if (!parsed.success) {
+      safeEmitError(socket, "bad_voice_level", "Voice level payload is invalid");
+      return;
+    }
+    const target = getSocketByRole(io, otherRole(role));
+    if (!target) {
+      return;
+    }
+    target.emit("peer-voice-level", parsed.data);
   });
 
   socket.on("leave", () => {
