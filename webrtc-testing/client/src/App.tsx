@@ -299,6 +299,8 @@ function JoinPage() {
   const [localVoiceLevel, setLocalVoiceLevel] = useState(0);
   const [remoteVoiceLevel, setRemoteVoiceLevel] = useState(0);
   const [micSamples, setMicSamples] = useState<number[]>(Array.from({ length: 20 }, () => 0));
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedAudioDevice, setSelectedAudioDevice] = useState<string>("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [endedDurationLabel, setEndedDurationLabel] = useState("00:00:00");
   const [uiState, setUiState] = useState<UiState>("pre_call");
@@ -462,6 +464,47 @@ function JoinPage() {
       socketRef.current?.emit("voice-level", { level });
     }, 120);
   }, []);
+
+  const changeAudioDevice = useCallback(async (deviceId: string) => {
+    setSelectedAudioDevice(deviceId);
+    if (!localStreamRef.current) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { deviceId: { exact: deviceId } },
+        video: false,
+      });
+      const newAudioTrack = stream.getAudioTracks()[0];
+      if (!newAudioTrack) return;
+
+      const oldTrack = localStreamRef.current.getAudioTracks()[0];
+      if (oldTrack) {
+        localStreamRef.current.removeTrack(oldTrack);
+        oldTrack.stop();
+      }
+
+      newAudioTrack.enabled = !isMutedRef.current;
+      localStreamRef.current.addTrack(newAudioTrack);
+
+      if (peerRef.current) {
+        const sender = peerRef.current.getSenders().find((s) => s.track?.kind === "audio");
+        if (sender) {
+          sender.replaceTrack(newAudioTrack).catch(() => {});
+        }
+      }
+
+      if (audioContextRef.current) {
+        if (voiceIntervalRef.current !== null) {
+          window.clearInterval(voiceIntervalRef.current);
+          voiceIntervalRef.current = null;
+        }
+        void audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+      initializeMediaPipelines();
+    } catch (error) {
+      console.error("Failed to switch audio device", error);
+    }
+  }, [initializeMediaPipelines]);
 
   const startCall = useCallback(async () => {
     if (!role || socketRef.current) {
@@ -726,6 +769,26 @@ function JoinPage() {
     };
   }, [closePeer, cleanupRealtimePipelines, disconnectSocket, initializeMediaPipelines, role, stableMode]);
 
+  useEffect(() => {
+    const fetchDevices = async () => {
+      if (!navigator.mediaDevices?.enumerateDevices) return;
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioInputs = devices.filter((d) => d.kind === "audioinput");
+        setAudioDevices((prev) => {
+          if (prev.length !== audioInputs.length) return audioInputs;
+          const isSame = prev.every((p, i) => p.deviceId === audioInputs[i].deviceId && p.label === audioInputs[i].label);
+          return isSame ? prev : audioInputs;
+        });
+      } catch {
+        // ignore
+      }
+    };
+    void fetchDevices();
+    const intervalId = window.setInterval(fetchDevices, 2000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
   const toggleMute = useCallback(() => {
     const stream = localStreamRef.current;
     if (!stream) {
@@ -907,6 +970,9 @@ function JoinPage() {
         isVideoOff={isVideoOff}
         statusMessage={fatalError ?? statusMessage}
         busyState={preCallBusyState}
+        audioDevices={audioDevices}
+        selectedAudioDevice={selectedAudioDevice}
+        onChangeAudioDevice={changeAudioDevice}
         onToggleMute={toggleMute}
         onToggleVideo={toggleVideo}
         onStartCall={handleStartCall}
