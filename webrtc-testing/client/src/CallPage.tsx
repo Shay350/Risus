@@ -1,11 +1,17 @@
 import { useEffect, useState, type RefObject } from "react";
 import { Mic, MicOff, Video, VideoOff, Paperclip, Phone } from "lucide-react";
 import AvatarFallback from "./components/AvatarFallback";
+import {
+  SUPPORTED_LANGUAGES,
+  getLanguageName,
+} from "./languages";
 
 type TranscriptMessage = {
-  id: number;
+  id: string;
   sender: string;
   text: string;
+  sourceLanguage: string;
+  translationState: "ready" | "translating" | "error";
   isSelf: boolean;
 };
 
@@ -24,40 +30,14 @@ type CallPageProps = {
   localName: string;
   remoteName: string;
   callDurationLabel: string;
+  transcript: TranscriptMessage[];
+  spokenLanguage: string;
+  transcriptLanguage: string;
+  transcriptStatus: string;
+  transcriptError: string | null;
+  onSpokenLanguageChange: (nextLanguage: string) => void;
+  onTranscriptLanguageChange: (nextLanguage: string) => void;
 };
-
-const transcript: TranscriptMessage[] = [
-  {
-    id: 1,
-    sender: "Ayesha Alshareef",
-    text: "It's been a long time since I look for help.",
-    isSelf: false,
-  },
-  {
-    id: 2,
-    sender: "Ayesha Alshareef",
-    text: "I want to find a new product that can sustain my business",
-    isSelf: false,
-  },
-  {
-    id: 3,
-    sender: "Micheal Smyth",
-    text: "Absolutely, we can definitely look into some options for you.",
-    isSelf: true,
-  },
-  {
-    id: 4,
-    sender: "Micheal Smyth",
-    text: "Can you share a bit more about your current business and what you're looking for in a new product?",
-    isSelf: true,
-  },
-  {
-    id: 5,
-    sender: "Ayesha Alshareef",
-    text: "Sure! I run a small online boutique that sells handmade jewelry. I'm looking for a product that can help me manage my inventory and sales more efficiently.",
-    isSelf: false,
-  },
-];
 
 const dialogAnimations = `
 @keyframes dialogBackdropIn {
@@ -105,6 +85,13 @@ const VideoCall = ({
   localName,
   remoteName,
   callDurationLabel,
+  transcript,
+  spokenLanguage,
+  transcriptLanguage,
+  transcriptStatus,
+  transcriptError,
+  onSpokenLanguageChange,
+  onTranscriptLanguageChange,
 }: CallPageProps) => {
   const [showEndCallDialog, setShowEndCallDialog] = useState(false);
   const localMicOn = !isMuted;
@@ -221,12 +208,63 @@ const VideoCall = ({
 
       <div className="w-full md:w-[360px] h-[40vh] md:h-full bg-panelBg border-t md:border-t-0 md:border-l border-[#383b3d] flex flex-col z-20">
         <div className="px-5 py-4 border-b border-[#383b3d] flex justify-between items-center">
-          <h2 className="text-sm font-medium text-gray-100">
-            Meeting Transcript
-          </h2>
+          <div>
+            <h2 className="text-sm font-medium text-gray-100">
+              Meeting Transcript
+            </h2>
+            <p className="mt-1 text-xs text-gray-400">
+              Showing {getLanguageName(transcriptLanguage)} captions
+            </p>
+          </div>
+        </div>
+
+        <div className="border-b border-[#383b3d] px-5 py-4 space-y-3">
+          <label className="block text-xs font-medium uppercase tracking-wide text-gray-400">
+            You speak
+            <select
+              value={spokenLanguage}
+              onChange={(event) => onSpokenLanguageChange(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-[#484b4d] bg-appBg px-3 py-2 text-sm text-gray-100 outline-none focus:border-activeGreen"
+            >
+              {SUPPORTED_LANGUAGES.map((language) => (
+                <option key={language.code} value={language.code}>
+                  {language.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block text-xs font-medium uppercase tracking-wide text-gray-400">
+            Chat language
+            <select
+              value={transcriptLanguage}
+              onChange={(event) => onTranscriptLanguageChange(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-[#484b4d] bg-appBg px-3 py-2 text-sm text-gray-100 outline-none focus:border-activeGreen"
+            >
+              {SUPPORTED_LANGUAGES.map((language) => (
+                <option key={language.code} value={language.code}>
+                  {language.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="rounded-xl border border-[#484b4d] bg-appBg px-3 py-2 text-xs text-gray-400">
+            <p>{transcriptStatus}</p>
+            {transcriptError ? (
+              <p className="mt-1 text-[#f6a4ab]">{transcriptError}</p>
+            ) : null}
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
+          {transcript.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[#484b4d] bg-appBg/50 p-4 text-sm leading-relaxed text-gray-400">
+              Start speaking. The conversation record will appear here in{" "}
+              {getLanguageName(transcriptLanguage)}.
+            </div>
+          ) : null}
+
           {transcript.map((msg) => (
             <div
               key={msg.id}
@@ -242,7 +280,14 @@ const VideoCall = ({
                     : "bg-appBg text-gray-200 rounded-tl-sm border border-[#383b3d]"
                 }`}
               >
-                {msg.text}
+                <div>{msg.text}</div>
+                <div className="mt-2 text-[11px] uppercase tracking-wide text-gray-400/80">
+                  {msg.translationState === "translating"
+                    ? `Translating from ${getLanguageName(msg.sourceLanguage)}...`
+                    : msg.translationState === "error"
+                      ? `Showing original ${getLanguageName(msg.sourceLanguage)}`
+                      : getLanguageName(msg.sourceLanguage)}
+                </div>
               </div>
             </div>
           ))}

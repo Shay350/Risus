@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import CallPage from "./CallPage";
+import {
+  getLanguageName,
+  getSupportedLanguageCode,
+} from "./languages";
 
 type Role = "alpha" | "beta";
 type JoinState =
@@ -26,6 +30,8 @@ const STABLE_MODE_STORAGE_KEY = "webrtcDemoStableMode";
 const TURN_URLS_STORAGE_KEY = "webrtcDemoTurnUrls";
 const TURN_USERNAME_STORAGE_KEY = "webrtcDemoTurnUsername";
 const TURN_CREDENTIAL_STORAGE_KEY = "webrtcDemoTurnCredential";
+const SPOKEN_LANGUAGE_STORAGE_KEY = "webrtcDemoSpokenLanguage";
+const TRANSCRIPT_LANGUAGE_STORAGE_KEY = "webrtcDemoTranscriptLanguage";
 const DEFAULT_TURN_URLS = import.meta.env.VITE_TURN_URLS ?? "";
 const DEFAULT_TURN_USERNAME = import.meta.env.VITE_TURN_USERNAME ?? "";
 const DEFAULT_TURN_CREDENTIAL = import.meta.env.VITE_TURN_CREDENTIAL ?? "";
@@ -71,6 +77,38 @@ function parseRoleFromPath(): Role | null {
     return parts[1];
   }
   return null;
+}
+
+type TranscriptSocketMessage = {
+  id: string;
+  senderName: string;
+  text: string;
+  sourceLanguage: string;
+  role: Role;
+  createdAt: string;
+};
+
+type TranscriptMessage = {
+  id: string;
+  sender: string;
+  originalText: string;
+  text: string;
+  sourceLanguage: string;
+  translationState: "ready" | "translating" | "error";
+  isSelf: boolean;
+};
+
+function createTranscriptId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function getDefaultLanguage(): string {
+  if (typeof window === "undefined") {
+    return "en";
+  }
+  return getSupportedLanguageCode(window.navigator.language);
 }
 
 function parseJoinConfig(): JoinConfig {
@@ -352,6 +390,24 @@ function JoinPage() {
   const [localVoiceLevel, setLocalVoiceLevel] = useState(0);
   const [remoteVoiceLevel, setRemoteVoiceLevel] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [spokenLanguage, setSpokenLanguage] = useState(() =>
+    getSupportedLanguageCode(
+      getStoredString(SPOKEN_LANGUAGE_STORAGE_KEY, getDefaultLanguage()),
+    ),
+  );
+  const [transcriptLanguage, setTranscriptLanguage] = useState(() =>
+    getSupportedLanguageCode(
+      getStoredString(
+        TRANSCRIPT_LANGUAGE_STORAGE_KEY,
+        getStoredString(SPOKEN_LANGUAGE_STORAGE_KEY, getDefaultLanguage()),
+      ),
+    ),
+  );
+  const [transcriptMessages, setTranscriptMessages] = useState<TranscriptMessage[]>([]);
+  const [transcriptError, setTranscriptError] = useState<string | null>(null);
+  const [transcriptStatus, setTranscriptStatus] = useState(
+    "Waiting for speech to start.",
+  );
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -367,10 +423,253 @@ function JoinPage() {
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
   const makingOfferRef = useRef(false);
   const callTimerIntervalRef = useRef<number | null>(null);
+  const transcriptMessagesRef = useRef<TranscriptMessage[]>([]);
+  const transcriptLanguageRef = useRef(transcriptLanguage);
+  const spokenLanguageRef = useRef(spokenLanguage);
+  const transcriptRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const transcriptShouldListenRef = useRef(false);
+  const lastTranscriptRef = useRef<{ signature: string; at: number }>({
+    signature: "",
+    at: 0,
+  });
 
   const emitMediaState = useCallback((micOn: boolean, videoOn: boolean) => {
     socketRef.current?.emit("media-state", { micOn, videoOn });
   }, []);
+
+  const updateTranscriptMessages = useCallback(
+    (updater: (current: TranscriptMessage[]) => TranscriptMessage[]) => {
+      setTranscriptMessages((current) => {
+        const next = updater(current);
+        transcriptMessagesRef.current = next;
+        return next;
+      });
+    },
+    [],
+  );
+
+  const translateTranscriptMessage = useCallback(
+    async (message: TranscriptMessage, targetLanguage: string) => {
+      if (message.sourceLanguage === targetLanguage) {
+        updateTranscriptMessages((current) =>
+          current.map((entry) =>
+            entry.id === message.id
+              ? {
+                  ...entry,
+                  text: entry.originalText,
+                  translationState: "ready",
+                }
+              : entry,
+          ),
+        );
+        return;
+      }
+
+      updateTranscriptMessages((current) =>
+        current.map((entry) =>
+          entry.id === message.id
+            ? {
+                ...entry,
+                text: entry.originalText,
+                translationState: "translating",
+              }
+            : entry,
+        ),
+      );
+
+      try {
+        const response = await fetch(`${serverUrl}/translate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: message.originalText,
+            sourceLang: message.sourceLanguage,
+            targetLang: targetLanguage,
+          }),
+        });
+
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as
+            | { error?: string }
+            | null;
+          throw new Error(payload?.error ?? "Translation failed");
+        }
+
+        const payload = (await response.json()) as { translation?: string };
+        if (transcriptLanguageRef.current !== targetLanguage) {
+          return;
+        }
+
+        updateTranscriptMessages((current) =>
+          current.map((entry) =>
+            entry.id === message.id
+              ? {
+                  ...entry,
+                  text: payload.translation?.trim() || entry.originalText,
+                  translationState: "ready",
+                }
+              : entry,
+          ),
+        );
+      } catch (error) {
+        if (transcriptLanguageRef.current !== targetLanguage) {
+          return;
+        }
+
+        updateTranscriptMessages((current) =>
+          current.map((entry) =>
+            entry.id === message.id
+              ? {
+                  ...entry,
+                  text: entry.originalText,
+                  translationState: "error",
+                }
+              : entry,
+          ),
+        );
+
+        setTranscriptError(
+          error instanceof Error ? error.message : "Translation failed",
+        );
+      }
+    },
+    [serverUrl, updateTranscriptMessages],
+  );
+
+  const handleTranscriptMessage = useCallback(
+    (payload: TranscriptSocketMessage) => {
+      const nextMessage: TranscriptMessage = {
+        id: payload.id,
+        sender: payload.senderName,
+        originalText: payload.text,
+        text: payload.text,
+        sourceLanguage: payload.sourceLanguage,
+        translationState:
+          payload.sourceLanguage === transcriptLanguageRef.current
+            ? "ready"
+            : "translating",
+        isSelf: payload.role === role,
+      };
+
+      updateTranscriptMessages((current) => [...current, nextMessage]);
+      setTranscriptStatus(
+        `Capturing live conversation. Showing ${getLanguageName(
+          transcriptLanguageRef.current,
+        )}.`,
+      );
+      setTranscriptError(null);
+
+      if (payload.sourceLanguage !== transcriptLanguageRef.current) {
+        void translateTranscriptMessage(
+          nextMessage,
+          transcriptLanguageRef.current,
+        );
+      }
+    },
+    [role, translateTranscriptMessage, updateTranscriptMessages],
+  );
+
+  const sendTranscriptMessage = useCallback(
+    (text: string) => {
+      const normalized = text.trim();
+      if (!normalized || !socketRef.current || !role) {
+        return;
+      }
+
+      const signature = `${spokenLanguageRef.current}:${normalized}`;
+      const now = Date.now();
+      if (
+        signature === lastTranscriptRef.current.signature &&
+        now - lastTranscriptRef.current.at < 4_000
+      ) {
+        return;
+      }
+      lastTranscriptRef.current = { signature, at: now };
+
+      socketRef.current.emit("transcript-message", {
+        id: createTranscriptId(),
+        senderName: role === "alpha" ? "Alpha" : "Beta",
+        text: normalized,
+        sourceLanguage: spokenLanguageRef.current,
+        createdAt: new Date().toISOString(),
+      });
+    },
+    [role],
+  );
+
+  const stopTranscriptRecognition = useCallback(() => {
+    const recognition = transcriptRecognitionRef.current;
+    if (!recognition) {
+      return;
+    }
+    transcriptRecognitionRef.current = null;
+    recognition.onresult = null;
+    recognition.onerror = null;
+    recognition.onend = null;
+    recognition.stop();
+  }, []);
+
+  const startTranscriptRecognition = useCallback(() => {
+    if (!role || isMutedRef.current || !transcriptShouldListenRef.current) {
+      return;
+    }
+    if (transcriptRecognitionRef.current) {
+      return;
+    }
+
+    const SpeechRecognitionCtor =
+      window.SpeechRecognition ?? window.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionCtor) {
+      setTranscriptStatus(
+        "Live captions are unavailable in this browser. Use Chrome or Edge.",
+      );
+      return;
+    }
+
+    const recognition = new SpeechRecognitionCtor();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = spokenLanguageRef.current;
+    recognition.onresult = (event) => {
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        if (!result.isFinal) {
+          continue;
+        }
+
+        const transcript = result[0]?.transcript?.trim();
+        if (!transcript) {
+          continue;
+        }
+
+        sendTranscriptMessage(transcript);
+      }
+    };
+    recognition.onerror = (event) => {
+      if (event.error === "aborted" || event.error === "no-speech") {
+        return;
+      }
+
+      setTranscriptError(`Captions unavailable: ${event.error}`);
+      setTranscriptStatus("Live captions paused.");
+    };
+    recognition.onend = () => {
+      transcriptRecognitionRef.current = null;
+      if (transcriptShouldListenRef.current && !isMutedRef.current) {
+        window.setTimeout(() => {
+          startTranscriptRecognition();
+        }, 250);
+      }
+    };
+
+    transcriptRecognitionRef.current = recognition;
+    setTranscriptStatus(
+      `Listening in ${getLanguageName(spokenLanguageRef.current)}.`,
+    );
+    setTranscriptError(null);
+    recognition.start();
+  }, [role, sendTranscriptMessage]);
 
   useEffect(() => {
     isMutedRef.current = isMuted;
@@ -379,6 +678,58 @@ function JoinPage() {
   useEffect(() => {
     isVideoOffRef.current = isVideoOff;
   }, [isVideoOff]);
+
+  useEffect(() => {
+    transcriptLanguageRef.current = transcriptLanguage;
+    window.localStorage.setItem(
+      TRANSCRIPT_LANGUAGE_STORAGE_KEY,
+      transcriptLanguage,
+    );
+    setTranscriptStatus(
+      transcriptMessagesRef.current.length > 0
+        ? `Capturing live conversation. Showing ${getLanguageName(
+            transcriptLanguage,
+          )}.`
+        : `Waiting for speech to start. Captions will appear in ${getLanguageName(
+            transcriptLanguage,
+          )}.`,
+    );
+
+    const snapshot = transcriptMessagesRef.current;
+    updateTranscriptMessages(() =>
+      snapshot.map((message) =>
+        message.sourceLanguage === transcriptLanguage
+          ? {
+              ...message,
+              text: message.originalText,
+              translationState: "ready",
+            }
+          : {
+              ...message,
+              text: message.originalText,
+              translationState: "translating",
+            },
+      ),
+    );
+
+    for (const message of snapshot) {
+      if (message.sourceLanguage !== transcriptLanguage) {
+        void translateTranscriptMessage(message, transcriptLanguage);
+      }
+    }
+  }, [transcriptLanguage, translateTranscriptMessage, updateTranscriptMessages]);
+
+  useEffect(() => {
+    spokenLanguageRef.current = spokenLanguage;
+    window.localStorage.setItem(SPOKEN_LANGUAGE_STORAGE_KEY, spokenLanguage);
+    const recognition = transcriptRecognitionRef.current;
+    if (recognition) {
+      stopTranscriptRecognition();
+      if (transcriptShouldListenRef.current) {
+        startTranscriptRecognition();
+      }
+    }
+  }, [spokenLanguage, startTranscriptRecognition, stopTranscriptRecognition]);
 
   const closePeer = useCallback(() => {
     if (peerRef.current) {
@@ -553,6 +904,10 @@ function JoinPage() {
           }
           isMutedRef.current = false;
           isVideoOffRef.current = false;
+          lastTranscriptRef.current = { signature: "", at: 0 };
+          updateTranscriptMessages(() => []);
+          setTranscriptError(null);
+          setTranscriptStatus("Waiting for speech to start.");
           emitMediaState(true, true);
         });
 
@@ -617,6 +972,7 @@ function JoinPage() {
           setStatusMessage("Peer disconnected. Waiting for them to return...");
           callStartRef.current = null;
           setElapsedSeconds(0);
+          setTranscriptStatus("Peer left the call. Transcript will resume when they return.");
           closePeer();
         });
 
@@ -633,6 +989,10 @@ function JoinPage() {
             ? Math.max(0, Math.min(1, payload.level))
             : 0;
           setRemoteVoiceLevel(next);
+        });
+
+        socket.on("transcript-message", (payload: TranscriptSocketMessage) => {
+          handleTranscriptMessage(payload);
         });
 
         socket.on(
@@ -669,6 +1029,7 @@ function JoinPage() {
       active = false;
       socketRef.current?.emit("leave");
       socketRef.current?.disconnect();
+      stopTranscriptRecognition();
       closePeer();
       if (callTimerIntervalRef.current !== null) {
         window.clearInterval(callTimerIntervalRef.current);
@@ -698,6 +1059,9 @@ function JoinPage() {
     ensurePeer,
     closePeer,
     emitMediaState,
+    handleTranscriptMessage,
+    stopTranscriptRecognition,
+    updateTranscriptMessages,
   ]);
 
   const toggleMute = useCallback(() => {
@@ -751,7 +1115,8 @@ function JoinPage() {
     setStatusMessage(
       "Call ended. Reopen your deterministic role link to rejoin.",
     );
-  }, [closePeer]);
+    stopTranscriptRecognition();
+  }, [closePeer, stopTranscriptRecognition]);
 
   const showCallPage = joinState === "ready" || joinState === "connected";
 
@@ -792,13 +1157,26 @@ function JoinPage() {
   }, [joinState]);
 
   useEffect(() => {
+    const shouldListen = showCallPage && !isMuted;
+    transcriptShouldListenRef.current = shouldListen;
+
+    if (shouldListen) {
+      startTranscriptRecognition();
+      return;
+    }
+
+    stopTranscriptRecognition();
+  }, [isMuted, showCallPage, startTranscriptRecognition, stopTranscriptRecognition]);
+
+  useEffect(() => {
     return () => {
       if (callTimerIntervalRef.current !== null) {
         window.clearInterval(callTimerIntervalRef.current);
         callTimerIntervalRef.current = null;
       }
+      stopTranscriptRecognition();
     };
-  }, []);
+  }, [stopTranscriptRecognition]);
 
   const callDurationLabel = formatDuration(elapsedSeconds);
 
@@ -828,6 +1206,20 @@ function JoinPage() {
         localName={role === "alpha" ? "Alpha" : "Beta"}
         remoteName={role === "alpha" ? "Beta" : "Alpha"}
         callDurationLabel={callDurationLabel}
+        transcript={transcriptMessages.map((message) => ({
+          id: message.id,
+          sender: message.sender,
+          text: message.text,
+          sourceLanguage: message.sourceLanguage,
+          translationState: message.translationState,
+          isSelf: message.isSelf,
+        }))}
+        spokenLanguage={spokenLanguage}
+        transcriptLanguage={transcriptLanguage}
+        transcriptStatus={transcriptStatus}
+        transcriptError={transcriptError}
+        onSpokenLanguageChange={setSpokenLanguage}
+        onTranscriptLanguageChange={setTranscriptLanguage}
       />
     );
   }

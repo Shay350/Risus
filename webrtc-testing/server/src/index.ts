@@ -24,6 +24,40 @@ const mediaStateSchema = z.object({
 const voiceLevelSchema = z.object({
   level: z.number().min(0).max(1),
 });
+const transcriptMessageSchema = z.object({
+  id: z.string().min(1),
+  senderName: z.string().min(1).max(80),
+  text: z.string().min(1).max(2_000),
+  sourceLanguage: z.string().min(2).max(16),
+  createdAt: z.string().min(1),
+});
+const translateRequestSchema = z.object({
+  text: z.string().min(1).max(4_000),
+  sourceLang: z.string().min(2).max(16),
+  targetLang: z.string().min(2).max(16),
+});
+
+const LANGUAGE_NAMES: Record<string, string> = {
+  af: "Afrikaans", sq: "Albanian", am: "Amharic", ar: "Arabic", hy: "Armenian",
+  az: "Azerbaijani", ba: "Bashkir", eu: "Basque", be: "Belarusian", bn: "Bengali",
+  bs: "Bosnian", br: "Breton", bg: "Bulgarian", my: "Burmese", ca: "Catalan",
+  zh: "Chinese (Mandarin)", hr: "Croatian", cs: "Czech", da: "Danish", nl: "Dutch",
+  en: "English", et: "Estonian", fo: "Faroese", fi: "Finnish", fr: "French",
+  gl: "Galician", ka: "Georgian", de: "German", el: "Greek", gu: "Gujarati",
+  ht: "Haitian Creole", ha: "Hausa", he: "Hebrew", hi: "Hindi", hu: "Hungarian",
+  is: "Icelandic", id: "Indonesian", it: "Italian", ja: "Japanese", jw: "Javanese",
+  kn: "Kannada", kk: "Kazakh", km: "Khmer", ko: "Korean", lo: "Lao",
+  lv: "Latvian", ln: "Lingala", lt: "Lithuanian", lb: "Luxembourgish", mk: "Macedonian",
+  mg: "Malagasy", ms: "Malay", ml: "Malayalam", mt: "Maltese", mi: "Maori",
+  mr: "Marathi", mn: "Mongolian", ne: "Nepali", no: "Norwegian", oc: "Occitan",
+  ps: "Pashto", fa: "Persian", pl: "Polish", pt: "Portuguese", pa: "Punjabi",
+  ro: "Romanian", ru: "Russian", sa: "Sanskrit", sr: "Serbian", nso: "Sepedi",
+  si: "Sinhala", sk: "Slovak", sl: "Slovenian", so: "Somali", es: "Spanish",
+  su: "Sundanese", sw: "Swahili", sv: "Swedish", tl: "Tagalog", tg: "Tajik",
+  ta: "Tamil", tt: "Tatar", te: "Telugu", th: "Thai", tr: "Turkish",
+  tk: "Turkmen", uk: "Ukrainian", ur: "Urdu", uz: "Uzbek", vi: "Vietnamese",
+  cy: "Welsh", yo: "Yoruba", zu: "Zulu",
+};
 
 const port = Number(process.env.PORT ?? 3000);
 const allowedOrigin = process.env.CORS_ORIGIN ?? "*";
@@ -74,6 +108,71 @@ function safeEmitError(socket: Socket, code: string, message: string): void {
   socket.emit("signal-error", { code, message });
 }
 
+function languageName(code: string): string {
+  return LANGUAGE_NAMES[code] ?? code;
+}
+
+async function translateText(
+  text: string,
+  sourceLang: string,
+  targetLang: string,
+): Promise<string> {
+  if (sourceLang === targetLang) {
+    return text;
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY not configured");
+  }
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [
+            {
+              text:
+                `You are a professional interpreter. Translate the user's text from ${languageName(sourceLang)} ` +
+                `to ${languageName(targetLang)}. Return only the translation with no notes or quotation marks.`,
+            },
+          ],
+        },
+        contents: [
+          {
+            parts: [{ text }],
+          },
+        ],
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || "Translation failed");
+  }
+
+  const payload = (await response.json()) as {
+    candidates?: Array<{
+      content?: {
+        parts?: Array<{ text?: string }>;
+      };
+    }>;
+  };
+  const translation = payload.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+  if (!translation) {
+    throw new Error("Translation response was empty");
+  }
+
+  return translation;
+}
+
 function occupancyStatus(): "empty" | "one_present" | "ready" | "active" {
   const hasAlpha = Boolean(alphaSocketId);
   const hasBeta = Boolean(betaSocketId);
@@ -102,6 +201,27 @@ app.get("/status", rateLimit, (_req, res) => {
     hasBeta: Boolean(betaSocketId),
     activeAt: activeAt ?? null,
   });
+});
+
+app.post("/translate", rateLimit, async (req, res) => {
+  const parsed = translateRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid_translate_payload" });
+    return;
+  }
+
+  try {
+    const translation = await translateText(
+      parsed.data.text,
+      parsed.data.sourceLang,
+      parsed.data.targetLang,
+    );
+
+    res.json({ translation });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Translation failed";
+    res.status(500).json({ error: message });
+  }
 });
 
 const io = new Server(httpServer, {
@@ -157,7 +277,6 @@ io.on("connection", (socket) => {
   }
 
   const { role } = context;
-  // eslint-disable-next-line no-console
   console.log(JSON.stringify({ event: "connected", role, socketId: socket.id }));
 
   socket.emit("joined", { role });
@@ -238,6 +357,26 @@ io.on("connection", (socket) => {
     target.emit("peer-voice-level", parsed.data);
   });
 
+  socket.on("transcript-message", (payload: unknown) => {
+    const parsed = transcriptMessageSchema.safeParse(payload);
+    if (!parsed.success) {
+      safeEmitError(socket, "bad_transcript_payload", "Transcript payload is invalid");
+      return;
+    }
+
+    const event = {
+      ...parsed.data,
+      role,
+    };
+
+    socket.emit("transcript-message", event);
+
+    const target = getSocketByRole(io, otherRole(role));
+    if (target) {
+      target.emit("transcript-message", event);
+    }
+  });
+
   socket.on("leave", () => {
     socket.disconnect(true);
   });
@@ -263,13 +402,11 @@ io.on("connection", (socket) => {
       target.emit("peer-left", { role: disconnectedContext.role });
     }
 
-    // eslint-disable-next-line no-console
     console.log(JSON.stringify({ event: "disconnected", role: disconnectedContext.role, socketId: socket.id }));
     socketContexts.delete(socket.id);
   });
 });
 
 httpServer.listen(port, () => {
-  // eslint-disable-next-line no-console
   console.log(`Signal server listening on http://localhost:${port}`);
 });

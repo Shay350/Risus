@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   RadarChart, Radar, PolarGrid, PolarAngleAxis,
-  ResponsiveContainer, TooltipProps,
+  ResponsiveContainer,
 } from "recharts";
 
 import { CardPanel } from "@/components/ui/card-panel";
@@ -134,7 +134,20 @@ function ChartLegend({ items }: { items: { color: string; label: string }[] }) {
   );
 }
 
-function ChartTooltip({ active, payload, label }: TooltipProps<number, string>) {
+function ChartTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{
+    dataKey?: string | number;
+    color?: string;
+    name?: string;
+    value?: number | string;
+  }>;
+  label?: string | number;
+}) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-xl border border-[var(--border)] bg-white px-3 py-2 shadow-md text-sm">

@@ -470,7 +470,6 @@ export default function TranslationTestPage() {
         </div>
       </div>
 
-      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio ref={audioRef} className="hidden" />
     </div>
   );
