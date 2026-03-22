@@ -1,45 +1,24 @@
 # WebRTC Two-Client Demo
 
-This repo contains a role-based WebRTC demo with:
+This repository contains a deterministic two-role WebRTC demo:
 
-- `client/`: React + TypeScript app
+- `client/`: React + TypeScript
 - `server/`: Node + Express + Socket.IO signaling server
 
-The system is intentionally built for exactly two roles per session:
+## Core behavior
 
-- `alpha`
-- `beta`
+- Exactly two roles exist: `alpha` and `beta`
+- Links are deterministic and fixed:
+  - `http://localhost:5173/join/alpha`
+  - `http://localhost:5173/join/beta`
+- No sessions and no tokens
+- One active socket per role (second join to same role is rejected)
 
-Only one connected socket per role is allowed in each session.
-
-## Features implemented
-
-- Session creation endpoint that returns one link for Alpha and one link for Beta
-- Signed join tokens (JWT) containing `sessionId` and `role`
-- Socket.IO auth validates token and enforces single occupancy per role
-- Deterministic initiator (`alpha` creates the offer)
-- SDP + ICE candidate relay through the signaling server
-- Disconnect handling (`peer-left` event)
-- Reconnect support (client retries signaling connection)
-- Session status endpoint and stale session cleanup
-- Basic CORS + request/socket rate limiting
-
-## Architecture
-
-1. Open the client home page and click **Create Session**.
-2. Client calls `POST /sessions` on the server.
-3. Server returns `alphaLink` and `betaLink` with signed tokens.
-4. Each participant opens their role-specific `/join?token=...` link.
-5. Socket auth verifies token and reserves role in that session.
-6. Once both are present, server emits `peer-ready`.
-7. `alpha` creates offer, `beta` answers, both exchange ICE candidates.
-8. Browser media flows peer-to-peer over WebRTC.
-
-## Message contract
+## Signaling events
 
 Server -> client:
 
-- `joined { sessionId, role }`
+- `joined { role }`
 - `waiting { message }`
 - `peer-ready {}`
 - `offer { type, sdp }`
@@ -55,6 +34,8 @@ Client -> server:
 - `ice-candidate { ... }`
 - `leave {}`
 
+`alpha` is the deterministic initiator and creates the offer.
+
 ## Local setup
 
 ### 1) Server
@@ -66,8 +47,6 @@ npm install
 npm run dev
 ```
 
-Server defaults to links/CORS compatible with `http://172.18.0.1:5173`.
-
 ### 2) Client
 
 ```bash
@@ -77,59 +56,28 @@ npm install
 npm run dev
 ```
 
-Client runs on `http://172.18.0.1:5173` when Vite is started with host binding.
-
-If needed, run Vite as:
-
-```bash
-npm run dev -- --host 0.0.0.0
-```
+Use the home page to configure signaling URL and optional TURN settings. It shows deterministic Alpha/Beta join links.
 
 ## API endpoints
 
 - `GET /health`
-- `POST /sessions`
-- `GET /sessions/:id`
+- `GET /status`
 
-Example create session response:
+## Stable demo mode
 
-```json
-{
-  "sessionId": "c8a0b3f3-....",
-  "alphaLink": "http://localhost:5173/join?token=...",
-  "betaLink": "http://localhost:5173/join?token=...",
-  "expiresInSeconds": 3600
-}
-```
+The home page includes "Demo stable mode" and TURN fields. These settings are persisted in local storage and appended to deterministic join links.
 
-## Build checks
+Stable mode:
 
-- `client`: `npm run lint`, `npm run build`
-- `server`: `npm run build`
+- lowers video capture profile
+- uses websocket-only signaling transport
+- when TURN is configured, forces relay transport (`iceTransportPolicy: relay`)
 
 ## Camera access note
 
-If you open the client over plain HTTP on an IP address (for example `http://172.18.0.1:5173`), many browsers disable `navigator.mediaDevices.getUserMedia`.
+For browser camera/microphone permissions, use:
 
-For camera/microphone access, use one of:
+- `http://localhost:5173` (recommended for local dev), or
+- HTTPS origin
 
-- `http://localhost:5173` (treated as secure context by browsers)
-- HTTPS for your IP/domain (recommended for non-localhost access)
-
-## Stable demo mode (recommended)
-
-The client includes a "Demo stable mode" toggle on the home page. It is enabled by default.
-
-What it does:
-
-- lowers video capture profile (smaller resolution + fps)
-- forces websocket transport for signaling client
-- if TURN is configured, prefers TURN relay for ICE transport
-
-To enable TURN for reliable cross-network demos, fill these fields in the app before creating a session:
-
-- TURN URLs (comma-separated)
-- TURN username
-- TURN credential
-
-These settings are stored in browser local storage and embedded into generated join links so both laptops use the same connection profile.
+Plain HTTP on raw IPs may block `getUserMedia`.

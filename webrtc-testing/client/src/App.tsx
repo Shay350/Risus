@@ -3,16 +3,9 @@ import { io, type Socket } from "socket.io-client";
 import "./App.css";
 
 type Role = "alpha" | "beta";
-type SessionCreateResponse = {
-  sessionId: string;
-  alphaLink: string;
-  betaLink: string;
-  expiresInSeconds: number;
-};
-
 type JoinState = "idle" | "connecting" | "waiting" | "ready" | "connected" | "error";
 type JoinConfig = {
-  token: string | null;
+  role: Role | null;
   serverUrl: string;
   stableMode: boolean;
   turnUrls: string[];
@@ -62,9 +55,20 @@ function getStoredBool(key: string, fallback = false): boolean {
   return value === "1" || value.toLowerCase() === "true";
 }
 
+function parseRoleFromPath(): Role | null {
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  if (parts.length !== 2 || parts[0] !== "join") {
+    return null;
+  }
+  if (parts[1] === "alpha" || parts[1] === "beta") {
+    return parts[1];
+  }
+  return null;
+}
+
 function parseJoinConfig(): JoinConfig {
   const params = new URLSearchParams(window.location.search);
-  const token = params.get("token");
+  const role = parseRoleFromPath();
   const serverFromQuery = params.get("server");
   const stableFromQuery = params.get("stable");
   const turnUrlsFromQuery = params.get("turnUrls");
@@ -94,7 +98,7 @@ function parseJoinConfig(): JoinConfig {
       : getStoredString(TURN_CREDENTIAL_STORAGE_KEY, DEFAULT_TURN_CREDENTIAL);
 
   return {
-    token: token && token.length > 0 ? token : null,
+    role,
     serverUrl,
     stableMode,
     turnUrls,
@@ -103,14 +107,8 @@ function parseJoinConfig(): JoinConfig {
   };
 }
 
-function createLocalJoinLink(serverJoinLink: string, config: Omit<JoinConfig, "token">): string {
-  const parsed = new URL(serverJoinLink);
-  const token = parsed.searchParams.get("token");
-  if (!token) {
-    return `${window.location.origin}/join`;
-  }
+function createDeterministicJoinLink(role: Role, config: Omit<JoinConfig, "role">): string {
   const params = new URLSearchParams();
-  params.set("token", token);
   params.set("server", config.serverUrl);
   if (config.stableMode) {
     params.set("stable", "1");
@@ -124,11 +122,11 @@ function createLocalJoinLink(serverJoinLink: string, config: Omit<JoinConfig, "t
   if (config.turnCredential) {
     params.set("turnCredential", config.turnCredential);
   }
-  return `${window.location.origin}/join?${params.toString()}`;
+  return `${window.location.origin}/join/${role}?${params.toString()}`;
 }
 
 function isJoinRoute(): boolean {
-  return window.location.pathname.startsWith("/join");
+  return window.location.pathname.startsWith("/join/");
 }
 
 function App() {
@@ -136,9 +134,7 @@ function App() {
 }
 
 function HomePage() {
-  const [data, setData] = useState<SessionCreateResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [serverInput, setServerInput] = useState(getStoredString(SERVER_URL_STORAGE_KEY, DEFAULT_SERVER_URL));
   const [activeServerUrl, setActiveServerUrl] = useState(
     getStoredString(SERVER_URL_STORAGE_KEY, DEFAULT_SERVER_URL),
@@ -153,6 +149,20 @@ function HomePage() {
   const [turnCredentialInput, setTurnCredentialInput] = useState(
     getStoredString(TURN_CREDENTIAL_STORAGE_KEY, DEFAULT_TURN_CREDENTIAL),
   );
+
+  const joinLinks = useMemo(() => {
+    const config: Omit<JoinConfig, "role"> = {
+      serverUrl: activeServerUrl,
+      stableMode,
+      turnUrls: parseTurnUrls(turnUrlsInput),
+      turnUsername: turnUsernameInput.trim(),
+      turnCredential: turnCredentialInput.trim(),
+    };
+    return {
+      alphaLink: createDeterministicJoinLink("alpha", config),
+      betaLink: createDeterministicJoinLink("beta", config),
+    };
+  }, [activeServerUrl, stableMode, turnCredentialInput, turnUrlsInput, turnUsernameInput]);
 
   const saveConnectionSettings = () => {
     try {
@@ -170,47 +180,14 @@ function HomePage() {
     }
   };
 
-  const createSession = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const normalizedServerUrl = normalizeServerUrl(activeServerUrl);
-      const turnUrls = parseTurnUrls(turnUrlsInput);
-      const response = await fetch(`${normalizedServerUrl}/sessions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to create session (${response.status})`);
-      }
-      const payload = (await response.json()) as SessionCreateResponse;
-      const linkConfig: Omit<JoinConfig, "token"> = {
-        serverUrl: normalizedServerUrl,
-        stableMode,
-        turnUrls,
-        turnUsername: turnUsernameInput.trim(),
-        turnCredential: turnCredentialInput.trim(),
-      };
-      setData({
-        ...payload,
-        alphaLink: createLocalJoinLink(payload.alphaLink, linkConfig),
-        betaLink: createLocalJoinLink(payload.betaLink, linkConfig),
-      });
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <main className="shell">
       <section className="card intro reveal">
         <p className="eyebrow">WebRTC Two-Role Demo</p>
-        <h1>Role-based browser-to-browser video call</h1>
+        <h1>Deterministic role links</h1>
         <p className="lead">
-          Create one session and share one link with Alpha and one with Beta. The signaling server
-          enforces one participant per role.
+          This demo has fixed links only: one for Alpha and one for Beta. No sessions, no per-click
+          token generation.
         </p>
         <div className="server-controls">
           <label htmlFor="server-url">Signaling Server URL</label>
@@ -261,36 +238,29 @@ function HomePage() {
             Save Connection Settings
           </button>
         </div>
-
-        <button className="primary" onClick={createSession} disabled={loading}>
-          {loading ? "Creating..." : "Create Session"}
-        </button>
         {error && <p className="error">{error}</p>}
       </section>
 
-      {data && (
-        <section className="card reveal delay-1">
-          <h2>Session Ready</h2>
-          <p className="mono">Session: {data.sessionId}</p>
-          <div className="links">
-            <article>
-              <h3>Alpha Link</h3>
-              <a href={data.alphaLink}>{data.alphaLink}</a>
-            </article>
-            <article>
-              <h3>Beta Link</h3>
-              <a href={data.betaLink}>{data.betaLink}</a>
-            </article>
-          </div>
-        </section>
-      )}
+      <section className="card reveal delay-1">
+        <h2>Join Links</h2>
+        <div className="links">
+          <article>
+            <h3>Alpha Link</h3>
+            <a href={joinLinks.alphaLink}>{joinLinks.alphaLink}</a>
+          </article>
+          <article>
+            <h3>Beta Link</h3>
+            <a href={joinLinks.betaLink}>{joinLinks.betaLink}</a>
+          </article>
+        </div>
+      </section>
     </main>
   );
 }
 
 function JoinPage() {
   const joinConfig = useMemo(() => parseJoinConfig(), []);
-  const token = joinConfig.token;
+  const role = joinConfig.role;
   const serverUrl = joinConfig.serverUrl;
   const stableMode = joinConfig.stableMode;
   const hasTurn = joinConfig.turnUrls.length > 0;
@@ -308,12 +278,10 @@ function JoinPage() {
     return [stunServer];
   }, [hasTurn, joinConfig.turnCredential, joinConfig.turnUrls, joinConfig.turnUsername]);
 
-  const [joinState, setJoinState] = useState<JoinState>(token ? "idle" : "error");
+  const [joinState, setJoinState] = useState<JoinState>(role ? "idle" : "error");
   const [statusMessage, setStatusMessage] = useState<string>(
-    token ? "Open your camera to begin." : "Missing token in URL.",
+    role ? "Open your camera to begin." : "Invalid route. Use /join/alpha or /join/beta.",
   );
-  const [role, setRole] = useState<Role | null>(null);
-  const [sessionId, setSessionId] = useState<string | null>(null);
   const [fatalError, setFatalError] = useState<string | null>(null);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -323,7 +291,6 @@ function JoinPage() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
   const makingOfferRef = useRef(false);
-  const roleRef = useRef<Role | null>(null);
 
   const closePeer = useCallback(() => {
     if (peerRef.current) {
@@ -397,7 +364,7 @@ function JoinPage() {
   }, [hasTurn, iceServers, stableMode]);
 
   useEffect(() => {
-    if (!token) {
+    if (!role) {
       return;
     }
 
@@ -433,22 +400,20 @@ function JoinPage() {
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
         }
+
         setStatusMessage("Local media ready. Connecting to signaling server...");
         setJoinState("connecting");
 
         const socket = io(serverUrl, {
           autoConnect: true,
-          auth: { token },
+          auth: { role },
           reconnection: true,
           reconnectionAttempts: 5,
           transports: ["websocket"],
         });
         socketRef.current = socket;
 
-        socket.on("joined", (payload: { role: Role; sessionId: string }) => {
-          setRole(payload.role);
-          roleRef.current = payload.role;
-          setSessionId(payload.sessionId);
+        socket.on("joined", (payload: { role: Role }) => {
           setStatusMessage(`Joined as ${payload.role.toUpperCase()}.`);
           setJoinState("connecting");
           setFatalError(null);
@@ -463,7 +428,7 @@ function JoinPage() {
           setJoinState("ready");
           setStatusMessage("Peer ready. Negotiating connection...");
           const peer = ensurePeer();
-          if (roleRef.current !== "alpha") {
+          if (role !== "alpha") {
             return;
           }
           if (makingOfferRef.current) {
@@ -551,17 +516,16 @@ function JoinPage() {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
         localStreamRef.current = null;
       }
-      roleRef.current = null;
     };
-  }, [token, serverUrl, stableMode, hasTurn, iceServers, ensurePeer, closePeer]);
+  }, [role, serverUrl, stableMode, hasTurn, iceServers, ensurePeer, closePeer]);
 
   return (
     <main className="shell">
       <section className="card intro reveal">
-        <p className="eyebrow">Join Session</p>
+        <p className="eyebrow">Join Role</p>
         <h1>Two-client WebRTC call</h1>
         <p className="lead">
-          {role ? `You are ${role.toUpperCase()} in session ${sessionId}.` : "Validating link..."}
+          {role ? `You are ${role.toUpperCase()}.` : "Invalid route. Use /join/alpha or /join/beta."}
         </p>
         <p className="mono">Signaling: {serverUrl}</p>
         <p className="mono">

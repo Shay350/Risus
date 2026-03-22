@@ -4,9 +4,7 @@ import {
   MicOff,
   Video,
   VideoOff,
-  PhoneOff,
   Paperclip,
-  MoreVertical,
   Phone,
 } from "lucide-react";
 
