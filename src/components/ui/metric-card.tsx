@@ -36,14 +36,12 @@ export function MetricCard({
     >
       <div className="space-y-3">
         <p className="text-sm font-medium text-[var(--muted)]">{label}</p>
-        <div className="flex items-end justify-between gap-3">
-          <p className="text-3xl font-semibold tracking-tight text-[var(--foreground)]">
-            {value}
-          </p>
-          {change ? (
-            <p className={cn("text-sm font-medium", changeTone[tone])}>{change}</p>
-          ) : null}
-        </div>
+        <p className="text-3xl font-semibold tracking-tight text-[var(--foreground)]">
+          {value}
+        </p>
+        {change ? (
+          <p className={cn("text-sm font-medium leading-snug", changeTone[tone])}>{change}</p>
+        ) : null}
         {helper ? (
           <p className="text-sm leading-6 text-[var(--muted)]">{helper}</p>
         ) : null}

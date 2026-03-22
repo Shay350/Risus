@@ -23,14 +23,9 @@ export default function AnalysisPage() {
             Focused insight review from the current session.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button asChild variant="outline">
-            <Link href="/session">Back to session</Link>
-          </Button>
-          <Button asChild variant="secondary">
-            <Link href="/deliverables">Generate document</Link>
-          </Button>
-        </div>
+        <Button asChild variant="outline">
+          <Link href="/session">Back to session</Link>
+        </Button>
       </header>
 
       <GenerateProjections transcript={transcriptString} />

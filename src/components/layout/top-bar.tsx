@@ -16,8 +16,8 @@ const routeCopy: Record<string, { title: string; description: string }> = {
     description: "Focused insight review.",
   },
   "/deliverables": {
-    title: "Deliverables",
-    description: "Unified output queue.",
+    title: "Case Repository",
+    description: "Browse cases and earn points by publishing yours.",
   },
 };
 

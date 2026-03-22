@@ -1,6 +1,6 @@
 "use client";
 
-import { FileOutput, PhoneCall, Sparkles } from "lucide-react";
+import { Archive, FlaskConical, PhoneCall, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -21,8 +21,13 @@ const navigation = [
   },
   {
     href: "/deliverables",
-    label: "Deliverables",
-    icon: FileOutput,
+    label: "Case Repository",
+    icon: Archive,
+  },
+  {
+    href: "/translation-test",
+    label: "Translation Lab",
+    icon: FlaskConical,
   },
 ];
 

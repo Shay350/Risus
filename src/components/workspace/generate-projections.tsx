@@ -15,71 +15,67 @@ import { Button } from "@/components/ui/button";
 const TEST_TRANSCRIPTS: Record<string, { label: string; transcript: string }> = {
   housing: {
     label: "Housing Intake",
-    transcript: `Sofia Chen: Hi Amina, thanks for joining today. Can you walk me through your current financial situation?
-Amina Hassan: My monthly income is $2,480. Rent is $1,650 per month, which makes things very tight.
+    transcript: `Sofia Chen: Hi Amina, thanks for joining today. Can you walk me through your current situation?
+Amina Hassan: Of course. I came to Minneapolis from Mogadishu three years ago on a refugee resettlement visa. My monthly income is $2,480 — I work as a hotel housekeeper. Rent is $1,650 per month, which is very tight.
 Sofia Chen: So after rent you have about $830 left. What are your other fixed monthly costs?
-Amina Hassan: Utilities are around $180. Transport $120. Groceries $350. I also have childcare costs of $200 per month.
-Sofia Chen: That puts total costs at roughly $2,500 — leaving a monthly shortfall of about $320. If the rent support subsidy of $400 is approved, you'd have a small surplus of $80. What does your income look like over the next year?
-Amina Hassan: If my hours are reduced it could drop to $1,900 a month. But if I get the full-time position that was promised, it would be $3,100.
-Sofia Chen: Let me model three scenarios. Current income of $2,480 with the $320 gap. Reduced hours at $1,900 widening the gap to $600. And the full-time outcome at $3,100 giving a $600 surplus. The biggest risks I see are the missing paystub, the April 30th filing deadline, and childcare eligibility if your employment status changes.
-Amina Hassan: I expect to hear about the job within two weeks. If I get it, my total income this year should be around $34,000.
-Sofia Chen: I'll prepare the rent support application using the current $2,480 figure, flag the paystub as pending, and add a note about the potential income change. Priority actions: get the paystub from your employer this week, confirm the April 30th deadline in writing, and we'll file the subsidy claim by April 25th.`,
+Amina Hassan: Utilities are around $180. Transport $120. Groceries $350. Childcare $200 per month. I also send about $150 home to my mother in Somalia every month through a hawala broker because wire transfers to Somalia are almost impossible — the US banks closed most of those corridors.
+Sofia Chen: That puts total monthly outgoings at roughly $2,650 — a shortfall of about $170 even before the Somalia remittance. The hawala transfer is also a real risk; those brokers can charge 8–12% and there's no guarantee of delivery. If the rent support subsidy of $400 is approved, you'd move into a small surplus.
+Amina Hassan: Yes. And if I get the full-time position, income would be $3,100. I expect to hear within two weeks.
+Sofia Chen: We also need to watch your visa status — your refugee travel document expires in eight months and renewal with USCIS is taking up to six months right now. A lapse could affect your employment eligibility and therefore the subsidy application. Biggest risks I see: the missing paystub, the April 30th filing deadline, childcare eligibility if employment status changes, and the hawala dependency for Somalia remittances.
+Amina Hassan: My total income this year should be around $34,000 if I get the full-time role. I also want to start saving — but I am afraid to put money in a bank account because I worry it could affect my benefits eligibility.
+Sofia Chen: That's a common misconception we can address — SNAP and housing assistance have asset limits but a basic savings account under $2,000 won't disqualify you in Minnesota. Priority actions: get the paystub this week, file subsidy claim by April 25th, and I'll connect you with a nonprofit that offers free remittance services to East Africa at under 3%.`,
   },
   bakery: {
-    label: "Bakery Business",
-    transcript: `Consultant: Thanks for joining today. Can you walk me through your current business?
-Maria Garcia: Sure. I run a small bakery in Detroit. We do about $8,000 a month in revenue right now, mostly walk-in customers. I want to expand into catering and maybe open a second location.
-Consultant: What are your main costs right now?
-Maria Garcia: Ingredients are about $2,500, rent is $1,800, staff is two part-time people at around $2,200 combined. So maybe $6,500 total costs, leaving about $1,500 profit a month.
-Consultant: And what's your vision for growth over the next three years?
-Maria Garcia: Year one I want catering to add another $3,000 a month. Year two I want to open that second location and hopefully double overall revenue. Year three I'm thinking about franchising or at least a third location.
-Consultant: What markets are you targeting for catering?
-Maria Garcia: Corporate offices are the biggest opportunity — I think we could do $4,000 a month there. Weddings and events another $2,500. Schools maybe $1,500. Right now we only do about $500 in off-site orders.
-Consultant: What's holding you back operationally?
-Maria Garcia: Our oven capacity is the main bottleneck — we're at 85% capacity during peak hours. Delivery is completely manual, no system. And I'm doing all the social media myself which takes 8 hours a week away from baking.
-Consultant: What's your biggest risk right now?
-Maria Garcia: Supply chain honestly. And finding reliable staff. Health permits in Detroit take forever — last time it took 4 months.`,
+    label: "Bakery Business · Mexico City",
+    transcript: `Consultant: Thanks for joining today, María. Can you walk me through your current business?
+María García: Sure. I run a small artisan bakery — pan dulce and specialty pastries — in Colonia Condesa, Mexico City. We do about 160,000 pesos a month in revenue, mostly walk-in and weekend market stalls. At today's exchange rate that's roughly $8,000 USD, but the peso has weakened lately so our dollar-equivalent income keeps shifting.
+Consultant: What are your main costs?
+María García: Ingredients are about 50,000 pesos. Rent is 36,000 — rents in Condesa have spiked since the foreign remote-worker wave. Two part-time staff cost around 22,000 pesos combined after social security contributions to IMSS, which we are legally required to pay. Total costs roughly 108,000 pesos, leaving about 52,000 profit — around $2,600 USD at current rates.
+Consultant: What's your growth vision?
+María García: Year one I want to add corporate catering — there are many international tech companies nearby. Year two, a second location in Roma Norte. Year three, maybe exporting branded pan dulce to the US, where there is huge demand in cities with Mexican diaspora.
+Consultant: What holds you back operationally?
+María García: Oven capacity — 85% utilised at peak. All delivery is manual. And the SAT tax authority — Mexico's IRS — requires me to issue a digital CFDI invoice for every transaction over 600 pesos. Doing that manually takes hours. If I switch to the catering market, corporate clients will require formal CFDI invoices with RFC numbers, which I need an accountant to set up properly.
+Consultant: What are your biggest risks?
+María García: Peso depreciation — if I import equipment I pay in dollars, and the peso has dropped 12% this year. The IMSS payroll obligations go up with minimum wage increases, which have been 20% per year for the last three years. And finding staff is hard — trained bakers in Condesa expect 18,000–22,000 pesos a month, which is above what I can currently pay full-time. Average Mexico City minimum wage is only about 8,700 pesos a month, so I do attract interest, but skilled bakers know their market value.`,
   },
   nonprofit: {
-    label: "Community Clinic",
-    transcript: `Program Officer: Dr. Okafor, can you describe the current state of your community health clinic?
-Dr. James Okafor: We currently serve about 200 patients per month across our two locations in the east side. About 60% are uninsured or underinsured. We have 3 full-time nurses and 1 part-time physician. We desperately need at least 2 more nurses and a full-time doctor to meet demand.
+    label: "Community Clinic · Lagos",
+    transcript: `Program Officer: Dr. Okafor, can you describe the current state of your community health clinic in Lagos?
+Dr. James Okafor: We operate two clinics in Mushin and Agege — both low-income areas on the Lagos mainland. We serve about 200 patients per month combined. About 70% have no health insurance; the NHIA government scheme covers only a fraction of our population here. We have 3 full-time nurses and 1 part-time physician.
 Program Officer: What does your waitlist look like?
-Dr. James Okafor: We have 340 people waiting for an initial appointment. Average wait time is 6 weeks. We're turning away about 80 new patients a month because we simply don't have capacity.
-Program Officer: Can you tell me about your outcomes and impact?
-Dr. James Okafor: We track blood pressure control, diabetes management, and preventive screening rates. Currently 58% of our hypertensive patients are at goal — the national benchmark is 70%. Diabetes control is at 52%, benchmark is 65%. Preventive screening completion is 41%, we want to get to 75%.
-Program Officer: What would expanded capacity let you achieve?
-Dr. James Okafor: If we hire the 2 nurses we need, we could serve 320 patients a month within six months and clear the waitlist within a year. The physician hire would let us open a mental health intake program we've had designed but unfunded for two years.
+Dr. James Okafor: 340 people waiting for an initial appointment, six-week average wait. We turn away about 80 new patients a month. The Mushin area alone has a population of over 600,000 with almost no primary care infrastructure.
+Program Officer: Tell me about your funding and financials.
+Dr. James Okafor: Our main funding is a USD-denominated grant from a UK charity — about $4,000 a month equivalent. But all our costs are in naira. The naira has lost nearly 60% of its value against the dollar in the past 18 months, so our effective purchasing power has nearly halved. Medical supplies — syringes, gloves, diagnostic strips — are mostly imported and priced in dollars or euros. A box of glucometer strips that cost 4,000 naira two years ago now costs 11,000. Salaries are in naira so staff are relatively affordable, but they are asking for adjustments to keep up with 33% inflation.
 Program Officer: What are the biggest operational challenges?
-Dr. James Okafor: Medical records are still paper-based — we're losing about 12 hours a week to admin that a basic EHR system would solve. Grant reporting takes another 8 hours and is mostly manual. And our community outreach is entirely word-of-mouth; we have no digital presence at all.`,
+Dr. James Okafor: Power outages — we run a generator 8–10 hours a day at about 80,000 naira per month in diesel. Internet for the EHR system we want to implement is unreliable. Our CAC registration as an NGO is current but the FIRS — Federal Inland Revenue Service — has started auditing health NGOs and we are unclear on our tax-exempt status for imported medical equipment. If we lose that exemption, import duties of 20% on medical supplies would be catastrophic.
+Program Officer: What outcomes are you tracking?
+Dr. James Okafor: Blood pressure control at goal: 58% versus 70% benchmark. Diabetes control: 52% versus 65%. We want to expand to 320 patients a month within six months if we can hire two more nurses. Average nurse salary in Lagos is about 120,000–180,000 naira per month — call it $80–120 USD at current rates, which is low by any international standard but competitive locally.`,
   },
   clothing: {
-    label: "Clothing Brand",
+    label: "Clothing Brand · India–Canada",
     transcript: `Consultant: Tell me about your brand and where you are right now.
-Priya Nair: I launched an ethical womenswear brand 18 months ago — everything is made by artisans in Kerala. We do about $14,000 a month in revenue, mostly through Instagram and two pop-up markets a month. Our average order value is $120 and we have about 900 repeat customers.
-Consultant: What are your costs like?
-Priya Nair: Production is our biggest cost — about $6,500 a month. Shipping and packaging is $1,200. I spend $800 on paid social ads. Then my own salary is $2,000, so total outgoings are around $10,500, leaving roughly $3,500 profit.
-Consultant: Where do you see the biggest growth opportunity?
-Priya Nair: Wholesale is completely untapped for us. I've had three boutiques in Toronto reach out but I've been nervous about the margin hit. I also think there's a corporate gifting angle — custom embroidered sets for company offsites — that could be $5,000 to $10,000 per order.
-Consultant: What markets are you currently reaching and where could you expand?
-Priya Nair: Right now it's about 70% Ontario, 20% BC, 10% scattered US. I think the US Pacific Northwest is a natural fit given the values alignment. And I've had enquiries from the UK but I have no idea how to handle duties and fulfilment there.
-Consultant: What's holding back faster growth?
-Priya Nair: Honestly production lead times. My artisans need 8 weeks to fulfil a large order. I can't run flash sales or respond to trends quickly. I also have no one helping me — I do design, marketing, customer service, and fulfilment myself. I'm burning out.
-Consultant: What are the risks you're most worried about?
-Priya Nair: Currency risk on the Kerala production costs since I pay in rupees. Losing a key artisan family — two of them make 60% of our volume. And if Instagram changes its algorithm again we could lose 40% of our traffic overnight.`,
+Priya Nair: I launched an ethical womenswear brand 18 months ago — everything is made by artisan cooperatives in Thrissur district, Kerala. I'm based in Toronto. Revenue is about CAD $18,000 a month, mostly Instagram and two pop-up markets. Average order value CAD $150, around 900 repeat customers.
+Consultant: What are your costs?
+Priya Nair: Production is the biggest — I pay the Kerala cooperatives in Indian rupees, roughly INR 550,000 a month, which at current rates is about CAD $8,800. But the rupee has been volatile — when it weakened last quarter my production cost dropped 9% in Canadian dollar terms without any actual price change. Shipping from Kerala to Toronto: CAD $1,800. Canada customs duties on apparel from India are 18% under MFN tariff, but I applied for CETA — wait, that's the EU deal. Under CUSMA I only cover the US side. For India I'm not covered by any FTA so I pay full duties. That adds CAD $1,580 per shipment that I hadn't properly modelled at launch.
+Consultant: What's your biggest growth opportunity?
+Priya Nair: Wholesale to Canadian boutiques — three in Toronto have approached me. Also corporate gifting — custom embroidered sets, CAD $6,000–12,000 per order. And I've had UK interest but I genuinely don't know how to handle VAT, UK customs post-Brexit, and the UKGT tariff schedule.
+Consultant: What's holding back growth?
+Priya Nair: Kerala artisans need 8 weeks for a large order — I can't do flash sales. Also I have no help — design, marketing, fulfilment, customer service, all me. The GST/HST situation in Canada: I crossed the CAD $30,000 threshold so I'm now required to register and collect HST, which I haven't done yet and I'm six months overdue. That's a real compliance risk.
+Consultant: Risks?
+Priya Nair: INR/CAD exchange rate risk — if the rupee strengthens 10% my margin drops almost to zero. Losing a key artisan family — two families produce 60% of volume. Instagram algorithm risk — we get 40% of traffic from one account. And the overdue HST registration; the CRA can assess penalties retroactively.`,
   },
   logistics: {
-    label: "Logistics Co-op",
+    label: "Logistics Co-op · South Africa",
     transcript: `Advisor: Can you walk me through how the co-op currently operates?
-Marcus Webb: We're a worker-owned delivery co-op — 22 drivers, all equity members. We run last-mile delivery contracts for three local grocery chains in Baltimore. Monthly revenue is about $68,000. Each driver earns around $2,800 a month after the co-op takes its operating cut.
+Marcus Dlamini: We're a worker-owned last-mile delivery co-op — 22 drivers, all equity members — operating in Soweto and parts of the Johannesburg south corridor. We run contracts with three regional grocery chains. Monthly revenue is about R1.2 million — roughly $65,000 USD. Each driver takes home around R18,000 a month, which is above the national minimum wage of R27.58 per hour but still tight given Joburg living costs.
 Advisor: What does your cost structure look like?
-Marcus Webb: Fuel is our biggest line — about $14,000 a month and rising. Vehicle maintenance across the fleet runs $6,000. Insurance is $8,500. Dispatch software and admin is $2,200. That leaves around $37,300 for driver payouts and retained earnings.
-Advisor: What's the operational picture — routes, utilisation, efficiency?
-Marcus Webb: We're running about 1,400 deliveries a week. Average route utilisation is 71% — meaning drivers are idle or repositioning about 29% of the time. Our on-time delivery rate is 88%, and the grocery contracts require 93% or we face penalties. We've paid $4,200 in penalties in the last two months.
-Advisor: Where do you want to take the co-op over the next two years?
-Marcus Webb: We want to add a fourth grocery contract — one is in negotiation right now, worth about $18,000 a month. We also want to bring on 6 more drivers. And we've been talking about buying two electric vans to cut fuel costs, but we need financing for that.
+Marcus Dlamini: Fuel is our biggest cost — about R240,000 a month. South Africa's fuel price is regulated by DMRE and linked to the Brent crude price in dollars, so rand depreciation directly hits us — every 10 cents the rand weakens against the dollar adds roughly R18,000 to our monthly fuel bill. Vehicle maintenance is R90,000. Insurance R115,000 — commercial fleet insurance here is expensive because of the hijacking risk on some routes; we've had two vehicle incidents this year. Admin and dispatch software is R28,000. That leaves about R727,000 for driver payouts and retained earnings — but driver payouts are R396,000, so retained earnings are only R331,000 a month before any capital expenditure.
+Advisor: What's the operational picture?
+Marcus Dlamini: About 1,400 deliveries a week. Route utilisation 71% — 29% idle or repositioning. On-time delivery rate 88%; our contracts require 93% or we face penalties. We've paid R78,000 in penalties over the last two months. The Soweto routes are the hardest — road quality and informal settlements mean our average delivery time is 40% longer per drop than our Sandton routes.
+Advisor: Where do you want to take the co-op?
+Marcus Dlamini: A fourth grocery contract in negotiation — worth about R320,000 a month. We also want to bring on 6 more driver-members. And we're exploring two electric delivery vehicles to cut fuel costs, but EV financing in South Africa is difficult — the banks want a 30% deposit and interest rates are at 11.75% following the SARB rate cycle. We've applied to the IDC's green economy fund but approval takes 9–12 months.
 Advisor: What are the biggest risks?
-Marcus Webb: The on-time rate penalty exposure is immediate. One of our grocery contracts is up for renewal in four months and the client has been hinting they want a 7% rate cut. And if fuel prices spike another 15% we go into the red unless we renegotiate.`,
+Marcus Dlamini: The rand. If it weakens another 8–10% against the dollar, fuel costs go into territory that breaks our driver payout model. One grocery contract renews in four months and they want a 7% rate cut. And our BEE scorecard — one of the grocery chains requires a Level 2 B-BBEE supplier rating for contract renewal. We're currently Level 4, which puts the renewal at risk.`,
   },
 };
 
@@ -182,6 +178,10 @@ interface DualBarConfig { title: string; labelKey: string; aKey: string; bKey: s
 
 function DualBarPanel({ section, config }: { section: DualBarSection; config: DualBarConfig }) {
   const height = Math.max(240, section.data.length * 60);
+  const yAxisWidth = Math.min(
+    120,
+    Math.max(60, ...section.data.map((d) => String(d[config.labelKey] ?? "").length * 5.5))
+  );
   return (
     <div className="rounded-2xl border border-[var(--border)] bg-[var(--background-elevated)] p-4 space-y-3">
       <SectionLabel>{config.title}</SectionLabel>
@@ -191,7 +191,7 @@ function DualBarPanel({ section, config }: { section: DualBarSection; config: Du
           <CartesianGrid strokeDasharray="3 3" stroke={BORDER_RGBA} horizontal={false} />
           <XAxis type="number" tick={{ fontSize: 10, fill: MUTED_HEX, fontFamily: "var(--font-mono)" }} axisLine={false} tickLine={false}
             tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
-          <YAxis type="category" dataKey={config.labelKey} width={80}
+          <YAxis type="category" dataKey={config.labelKey} width={yAxisWidth}
             tick={{ fontSize: 10, fill: MUTED_HEX, fontFamily: "var(--font-mono)" }} axisLine={false} tickLine={false} />
           <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(15,23,42,0.03)" }} />
           <Bar dataKey={config.aKey} name={config.aLabel} fill={config.aColor} radius={[0, 3, 3, 0]} />
@@ -329,6 +329,108 @@ function TimelinePanel({ steps }: { steps: NextStep[] }) {
   );
 }
 
+// ─── PDF download ─────────────────────────────────────────────────
+function buildPdfHtml(data: ProjectionsData, sessionTitle: string): string {
+  const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+
+  const metricRows = data.metrics.map(m =>
+    `<tr><td>${m.label}</td><td><strong>${m.value}</strong></td><td>${m.change}</td></tr>`
+  ).join("");
+
+  const sectionBlocks = data.sections.map(key => {
+    const section = data[key as keyof ProjectionsData] as { summary: string; data: Record<string, number | string>[] } | undefined;
+    if (!section) return "";
+    const titles: Record<string, string> = {
+      financial: "Financial Forecast", market: "Market Opportunity",
+      risk: "Risk Assessment", operations: "Operational Metrics",
+      impact: "Community Impact", team: "Team Capacity",
+    };
+    const rows = section.data.map((row) =>
+      `<tr>${Object.entries(row).map(([, v]) => `<td>${v}</td>`).join("")}</tr>`
+    ).join("");
+    const headers = section.data[0]
+      ? `<tr>${Object.keys(section.data[0]).map(k => `<th>${k}</th>`).join("")}</tr>`
+      : "";
+    return `<h3>${titles[key] ?? key}</h3><p class="summary">${section.summary}</p><table>${headers}${rows}</table>`;
+  }).join("");
+
+  const stepRows = data.nextSteps.steps.map(s =>
+    `<tr><td>${s.timeframe}</td><td>${s.priority}</td><td><strong>${s.action}</strong><br/><span class="sub">${s.detail}</span></td></tr>`
+  ).join("");
+
+  const teamRows = data.nextSteps.recommendedTeam.map(t =>
+    `<tr><td><strong>${t.role}</strong></td><td>${t.reason}</td></tr>`
+  ).join("");
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+<title>${sessionTitle} — AI Projections</title>
+<style>
+  body { font-family: system-ui, sans-serif; font-size: 12px; color: #1a1a1a; margin: 40px; line-height: 1.5; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .meta { color: #666; font-size: 11px; margin-bottom: 28px; }
+  h2 { font-size: 14px; font-weight: 700; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-top: 28px; }
+  h3 { font-size: 12px; font-weight: 700; margin: 18px 0 4px; color: #0f766e; }
+  .summary { font-style: italic; color: #555; margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  th { background: #f3f4f6; text-align: left; padding: 6px 8px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  td { padding: 6px 8px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+  .sub { color: #666; font-size: 11px; }
+  @media print { body { margin: 20px; } }
+</style></head><body>
+<h1>${sessionTitle}</h1>
+<div class="meta">AI Projections · Generated ${date}</div>
+
+<h2>Key Metrics</h2>
+<table><tr><th>Metric</th><th>Value</th><th>Context</th></tr>${metricRows}</table>
+
+${sectionBlocks}
+
+<h2>Next Steps</h2>
+<p class="summary">${data.nextSteps.summary}</p>
+<table><tr><th>Timeframe</th><th>Priority</th><th>Action</th></tr>${stepRows}</table>
+
+<h2>Recommended Team</h2>
+<table><tr><th>Role</th><th>Reason</th></tr>${teamRows}</table>
+</body></html>`;
+}
+
+export interface SavedDocument {
+  id: string;
+  title: string;
+  savedAt: string;
+  data: ProjectionsData;
+}
+
+const SAVED_DOCS_KEY = "risus_saved_documents";
+
+function saveToLocalStorage(doc: SavedDocument) {
+  try {
+    const existing: SavedDocument[] = JSON.parse(localStorage.getItem(SAVED_DOCS_KEY) ?? "[]");
+    localStorage.setItem(SAVED_DOCS_KEY, JSON.stringify([doc, ...existing].slice(0, 20)));
+  } catch { /* ignore */ }
+}
+
+export function openDocumentPdf(data: ProjectionsData, title: string) {
+  const html = buildPdfHtml(data, title);
+  const win = window.open("", "_blank");
+  if (!win) return;
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); }, 400);
+}
+
+function downloadPdf(data: ProjectionsData, sessionTitle: string) {
+  const doc: SavedDocument = {
+    id: crypto.randomUUID(),
+    title: sessionTitle,
+    savedAt: new Date().toISOString(),
+    data,
+  };
+  saveToLocalStorage(doc);
+  openDocumentPdf(data, sessionTitle);
+}
+
 function LoadingDots() {
   return (
     <span className="flex items-center gap-1">
@@ -429,9 +531,16 @@ export function GenerateProjections({ transcript: propTranscript }: GenerateProj
       title="AI Projections"
       description="Gemini reads the transcript and surfaces only the analytical sections relevant to this call."
       action={
-        <Button variant="secondary" size="sm" onClick={generate} disabled={isLoading}>
-          {isLoading ? <><LoadingDots /> Analyzing…</> : <>✦ {hasGenerated.current ? "Regenerate" : "Generate Projections"}</>}
-        </Button>
+        <div className="flex items-center gap-2">
+          {status === "done" && data && (
+            <Button variant="outline" size="sm" onClick={() => downloadPdf(data, activeTranscript.split("\n")[0].split(":")[0] ?? "Session")}>
+              ↓ Download PDF
+            </Button>
+          )}
+          <Button variant="secondary" size="sm" onClick={generate} disabled={isLoading}>
+            {isLoading ? <><LoadingDots /> Analyzing…</> : <>✦ {hasGenerated.current ? "Regenerate" : "Generate Projections"}</>}
+          </Button>
+        </div>
       }
     >
       {/* Transcript selector */}

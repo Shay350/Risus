@@ -193,3 +193,52 @@ export interface DeliverableRecord {
   languageLabel: string;
   summary: string;
 }
+
+export type CaseStatus = "verified" | "published" | "draft";
+
+export type CaseSector =
+  | "Housing & Social Services"
+  | "Food & Agriculture"
+  | "Healthcare"
+  | "Retail & Trade"
+  | "Logistics & Transport"
+  | "Artisan & Craft"
+  | "Education"
+  | "Finance & Insurance";
+
+export interface CaseRecord {
+  id: string;
+  title: string;
+  orgName: string;
+  country: string;
+  countryCode: string;
+  city?: string;
+  sector: CaseSector;
+  status: CaseStatus;
+  publishedAt: string;
+  year: number;
+  description: string;
+  keyOutcome: string;
+  languages: LanguageCode[];
+  pointsEarned: number;
+  isAnonymous: boolean;
+  isOwn?: boolean;
+  sessionId?: string;
+}
+
+export interface Achievement {
+  id: string;
+  title: string;
+  icon: string;
+  earned: boolean;
+}
+
+export interface UserCaseProfile {
+  name: string;
+  orgName: string;
+  activeSince: string;
+  totalPoints: number;
+  nextRewardThreshold: number;
+  casesPublished: number;
+  achievements: Achievement[];
+}

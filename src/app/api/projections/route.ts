@@ -49,6 +49,17 @@ JSON structure (only include keys for chosen sections; always include "metrics" 
   }
 }
 
+STEP 3 — Country & context factors: If the transcript reveals the client's country, region, or community, weave the following into relevant sections ONLY where they genuinely affect the analysis. Do not force them in and do not fabricate details not supported by the transcript.
+
+- Banking & legal constraints: withdrawal limits, restricted access to international banking, blocked payment networks, licensing or permit barriers specific to that jurisdiction.
+- Currency challenges: reliance on a foreign or occupying currency (e.g. Israeli shekel in Palestinian territories), high inflation, exchange rate volatility, limited currency convertibility.
+- Money transfer fees & corridors: high international transfer fees (e.g. ~15% for Palestine), reliance on third-party corridors (e.g. sending via an intermediary in a third country), hawala networks, or remittance delays.
+- Tax obligations: local business taxes, VAT, import/export duties, donor-reporting tax requirements, or tax exemptions relevant to the entity type.
+- Purchasing power & wages: average local salary relative to proposed pricing, cost-of-living index, what price points are viable for the target population.
+- Social & geopolitical factors: supply chain disruptions, movement restrictions, infrastructure gaps (power, internet, logistics), conflict risk, donor dependency, or diaspora dynamics that affect operations or growth.
+
+When any of these factors apply, surface them in metric cards, risk scores, next-step details, or section summaries — whichever bucket they belong to. Add a risk entry for each material constraint. Adjust financial projections to reflect realistic local costs and transfer losses.
+
 Use real numbers and specifics from the transcript wherever possible.`;
 
 export async function POST(req: NextRequest) {
