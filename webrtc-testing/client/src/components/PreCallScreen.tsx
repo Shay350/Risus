@@ -18,18 +18,20 @@ type PreCallScreenProps = {
 
 function MicMeter({ samples }: { samples: number[] }) {
   return (
-    <div className="flex items-end gap-1 h-10" aria-hidden="true">
-      {Array.from({ length: 20 }, (_, index) => {
-        const sample = Math.max(0, Math.min(1, samples[index] ?? 0));
-        const barHeight = 22 + sample * 78;
-        return (
-          <div
-            key={index}
-            className="w-1 rounded-sm bg-activeGreen/90"
-            style={{ height: `${barHeight}%` }}
-          />
-        );
-      })}
+    <div className="h-12 w-full border border-[#3b3f42] rounded-lg px-3 py-2">
+      <div className="h-full grid grid-cols-20 items-end gap-1" aria-hidden="true">
+        {Array.from({ length: 20 }, (_, index) => {
+          const sample = Math.max(0, Math.min(1, samples[index] ?? 0));
+          const barHeight = 15 + sample * 85;
+          return (
+            <div
+              key={index}
+              className="rounded-sm bg-activeGreen"
+              style={{ height: `${barHeight}%`, minHeight: "3px" }}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -55,16 +57,16 @@ export default function PreCallScreen({
         : null;
 
   return (
-    <main className="min-h-screen bg-appBg text-white font-inter antialiased p-4 md:p-6">
-      <section className="max-w-6xl mx-auto h-[calc(100vh-2rem)] md:h-[calc(100vh-3rem)] flex flex-col">
-        <header className="flex items-center justify-between border-b border-[#3b3f42] pb-4">
-          <h1 className="text-lg md:text-xl font-semibold tracking-wide">Pre-Call Setup</h1>
+    <main className="min-h-screen bg-appBg text-white font-inter antialiased">
+      <section className="max-w-[1280px] mx-auto px-4 md:px-6 py-4 md:py-6 min-h-screen flex flex-col">
+        <header className="h-14 flex items-center justify-between border-b border-[#3b3f42]">
+          <h1 className="text-xl font-semibold tracking-wide">Pre-Call Setup</h1>
           <span className="text-xs md:text-sm text-gray-300 uppercase tracking-[0.08em]">{role}</span>
         </header>
 
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1.65fr_1fr] gap-4 pt-4 min-h-0">
-          <article className="border border-[#3b3f42] rounded-2xl p-3 md:p-4 flex flex-col">
-            <div className="relative w-full aspect-video rounded-xl border border-[#41464a] overflow-hidden">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1.65fr_1fr] items-center gap-6 md:gap-8 py-6">
+          <div className="space-y-4">
+            <article className="relative w-full aspect-video rounded-2xl border border-[#41464a] overflow-hidden bg-[#191b1d]">
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -76,35 +78,21 @@ export default function PreCallScreen({
 
               {overlayMessage && (
                 <div className="absolute inset-0 bg-black/55 flex flex-col items-center justify-center gap-3">
-                  <span className="h-6 w-6 rounded-full border-2 border-activeGreen border-t-transparent animate-spin" />
+                  <span className="h-7 w-7 rounded-full border-2 border-activeGreen border-t-transparent animate-spin" />
                   <p className="text-sm text-gray-100 font-medium">{overlayMessage}</p>
                 </div>
               )}
 
-              <div className="absolute bottom-3 left-3 px-3 py-1 rounded-md bg-[#202325] border border-[#3b3f42] text-xs tracking-wide">
+              <div className="absolute top-3 left-3 px-3 py-1 rounded-md bg-[#202325] border border-[#3b3f42] text-xs tracking-wide">
                 Camera preview
               </div>
-            </div>
-          </article>
+            </article>
 
-          <aside className="border border-[#3b3f42] rounded-2xl p-4 md:p-5 flex flex-col gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.08em] text-gray-400">Connection</p>
-              <p className="text-sm text-gray-200 mt-1 leading-relaxed">{statusMessage}</p>
-            </div>
-
-            <div className="border border-[#3b3f42] rounded-xl p-4">
-              <p className="text-sm font-medium text-gray-200">Microphone preview</p>
-              <div className="mt-3">
-                <MicMeter samples={isMuted ? Array.from({ length: 20 }, () => 0) : micSamples} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center justify-center gap-4">
               <button
                 type="button"
                 onClick={onToggleMute}
-                className="h-12 rounded-xl border border-[#4b5155] bg-panelBg text-gray-100 flex items-center justify-center"
+                className="h-12 w-12 rounded-full border border-[#4b5155] bg-panelBg text-gray-100 flex items-center justify-center"
                 aria-label={isMuted ? "Enable microphone" : "Mute microphone"}
               >
                 {isMuted ? <MicOff size={18} /> : <Mic size={18} />}
@@ -112,24 +100,40 @@ export default function PreCallScreen({
               <button
                 type="button"
                 onClick={onToggleVideo}
-                className="h-12 rounded-xl border border-[#4b5155] bg-panelBg text-gray-100 flex items-center justify-center"
+                className="h-12 w-12 rounded-full border border-[#4b5155] bg-panelBg text-gray-100 flex items-center justify-center"
                 aria-label={isVideoOff ? "Enable camera" : "Disable camera"}
               >
                 {isVideoOff ? <VideoOff size={18} /> : <Video size={18} />}
               </button>
             </div>
 
-            <div className="pt-1 flex justify-center lg:justify-end">
-              <button
-                type="button"
-                onClick={onStartCall}
-                disabled={startDisabled}
-                aria-label="Start call"
-                className="w-14 h-14 rounded-full border border-[#2d8f6f] bg-activeGreen text-[#0b1d16] flex items-center justify-center disabled:opacity-55 disabled:cursor-not-allowed"
-              >
-                <Phone size={22} />
-              </button>
+            <div className="flex items-center justify-center">
+              <div className="w-full max-w-[540px]">
+                <MicMeter samples={isMuted ? Array.from({ length: 20 }, () => 0) : micSamples} />
+              </div>
             </div>
+          </div>
+
+          <aside className="w-full max-w-[420px] justify-self-center lg:justify-self-start border border-[#3b3f42] rounded-2xl p-6 md:p-7 flex flex-col gap-5">
+            <div>
+              <h2 className="text-2xl md:text-3xl font-semibold text-gray-100">Deep Work Call</h2>
+              <p className="text-sm text-gray-300 mt-2">No one else is here yet.</p>
+            </div>
+
+            <div className="border border-[#3b3f42] rounded-xl p-4">
+              <p className="text-xs uppercase tracking-[0.08em] text-gray-400">Connection</p>
+              <p className="text-sm text-gray-200 mt-2 leading-relaxed">{statusMessage}</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={onStartCall}
+              disabled={startDisabled}
+              aria-label="Start call"
+              className="h-12 rounded-xl border border-[#2d8f6f] bg-activeGreen text-[#0b1d16] font-semibold flex items-center justify-center disabled:opacity-55 disabled:cursor-not-allowed"
+            >
+              <Phone size={20} />
+            </button>
           </aside>
         </div>
       </section>

@@ -457,7 +457,7 @@ function JoinPage() {
       }
       const rms = Math.sqrt(sum / bins.length);
       smoothedLevel = smoothedLevel * 0.72 + rms * 0.28;
-      const level = isMutedRef.current ? 0 : Math.min(1, smoothedLevel * 6);
+      const level = isMutedRef.current ? 0 : Math.min(1, smoothedLevel * 7.5);
       setLocalVoiceLevel(level);
       socketRef.current?.emit("voice-level", { level });
     }, 120);
@@ -807,7 +807,8 @@ function JoinPage() {
       return;
     }
     const analyser = audioContextRef.current.createAnalyser();
-    analyser.fftSize = 256;
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.55;
     const source = audioContextRef.current.createMediaStreamSource(localStreamRef.current);
     source.connect(analyser);
     const bins = new Uint8Array(analyser.frequencyBinCount);
@@ -823,7 +824,8 @@ function JoinPage() {
           count += 1;
         }
         const avg = count > 0 ? sum / count : 0;
-        return isMutedRef.current ? 0 : Math.min(1, avg / 128);
+        const normalized = Math.max(0, (avg - 10) / 95);
+        return isMutedRef.current ? 0 : Math.min(1, normalized);
       });
       setMicSamples(next);
     }, 90);
