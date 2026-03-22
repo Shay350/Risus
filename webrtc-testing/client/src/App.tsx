@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
-import "./App.css";
+import CallPage from "./CallPage";
 
 type Role = "alpha" | "beta";
-type JoinState = "idle" | "connecting" | "waiting" | "ready" | "connected" | "error";
+type JoinState =
+  | "idle"
+  | "connecting"
+  | "waiting"
+  | "ready"
+  | "connected"
+  | "error";
 type JoinConfig = {
   role: Role | null;
   serverUrl: string;
@@ -13,7 +19,8 @@ type JoinConfig = {
   turnCredential: string;
 };
 
-const DEFAULT_SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3000";
+const DEFAULT_SERVER_URL =
+  import.meta.env.VITE_SERVER_URL ?? "http://localhost:3000";
 const SERVER_URL_STORAGE_KEY = "webrtcDemoServerUrl";
 const STABLE_MODE_STORAGE_KEY = "webrtcDemoStableMode";
 const TURN_URLS_STORAGE_KEY = "webrtcDemoTurnUrls";
@@ -107,7 +114,10 @@ function parseJoinConfig(): JoinConfig {
   };
 }
 
-function createDeterministicJoinLink(role: Role, config: Omit<JoinConfig, "role">): string {
+function createDeterministicJoinLink(
+  role: Role,
+  config: Omit<JoinConfig, "role">,
+): string {
   const params = new URLSearchParams();
   params.set("server", config.serverUrl);
   if (config.stableMode) {
@@ -135,11 +145,15 @@ function App() {
 
 function HomePage() {
   const [error, setError] = useState<string | null>(null);
-  const [serverInput, setServerInput] = useState(getStoredString(SERVER_URL_STORAGE_KEY, DEFAULT_SERVER_URL));
+  const [serverInput, setServerInput] = useState(
+    getStoredString(SERVER_URL_STORAGE_KEY, DEFAULT_SERVER_URL),
+  );
   const [activeServerUrl, setActiveServerUrl] = useState(
     getStoredString(SERVER_URL_STORAGE_KEY, DEFAULT_SERVER_URL),
   );
-  const [stableMode, setStableMode] = useState(getStoredBool(STABLE_MODE_STORAGE_KEY, true));
+  const [stableMode, setStableMode] = useState(
+    getStoredBool(STABLE_MODE_STORAGE_KEY, true),
+  );
   const [turnUrlsInput, setTurnUrlsInput] = useState(
     getStoredString(TURN_URLS_STORAGE_KEY, DEFAULT_TURN_URLS),
   );
@@ -162,21 +176,38 @@ function HomePage() {
       alphaLink: createDeterministicJoinLink("alpha", config),
       betaLink: createDeterministicJoinLink("beta", config),
     };
-  }, [activeServerUrl, stableMode, turnCredentialInput, turnUrlsInput, turnUsernameInput]);
+  }, [
+    activeServerUrl,
+    stableMode,
+    turnCredentialInput,
+    turnUrlsInput,
+    turnUsernameInput,
+  ]);
 
   const saveConnectionSettings = () => {
     try {
       const normalized = normalizeServerUrl(serverInput);
       window.localStorage.setItem(SERVER_URL_STORAGE_KEY, normalized);
-      window.localStorage.setItem(STABLE_MODE_STORAGE_KEY, stableMode ? "1" : "0");
+      window.localStorage.setItem(
+        STABLE_MODE_STORAGE_KEY,
+        stableMode ? "1" : "0",
+      );
       window.localStorage.setItem(TURN_URLS_STORAGE_KEY, turnUrlsInput.trim());
-      window.localStorage.setItem(TURN_USERNAME_STORAGE_KEY, turnUsernameInput.trim());
-      window.localStorage.setItem(TURN_CREDENTIAL_STORAGE_KEY, turnCredentialInput.trim());
+      window.localStorage.setItem(
+        TURN_USERNAME_STORAGE_KEY,
+        turnUsernameInput.trim(),
+      );
+      window.localStorage.setItem(
+        TURN_CREDENTIAL_STORAGE_KEY,
+        turnCredentialInput.trim(),
+      );
       setActiveServerUrl(normalized);
       setServerInput(normalized);
       setError(null);
     } catch {
-      setError("Settings are invalid. Example URL: https://your-tunnel.trycloudflare.com");
+      setError(
+        "Settings are invalid. Example URL: https://your-tunnel.trycloudflare.com",
+      );
     }
   };
 
@@ -186,8 +217,8 @@ function HomePage() {
         <p className="eyebrow">WebRTC Two-Role Demo</p>
         <h1>Deterministic role links</h1>
         <p className="lead">
-          This demo has fixed links only: one for Alpha and one for Beta. No sessions, no per-click
-          token generation.
+          This demo has fixed links only: one for Alpha and one for Beta. No
+          sessions, no per-click token generation.
         </p>
         <div className="server-controls">
           <label htmlFor="server-url">Signaling Server URL</label>
@@ -209,7 +240,9 @@ function HomePage() {
             Demo stable mode (lower video quality, prefer TURN relay)
           </label>
 
-          <label htmlFor="turn-urls">TURN URLs (comma-separated, optional)</label>
+          <label htmlFor="turn-urls">
+            TURN URLs (comma-separated, optional)
+          </label>
           <input
             id="turn-urls"
             value={turnUrlsInput}
@@ -234,7 +267,11 @@ function HomePage() {
             placeholder="TURN credential"
           />
 
-          <button className="secondary" onClick={saveConnectionSettings} type="button">
+          <button
+            className="secondary"
+            onClick={saveConnectionSettings}
+            type="button"
+          >
             Save Connection Settings
           </button>
         </div>
@@ -276,19 +313,32 @@ function JoinPage() {
       ];
     }
     return [stunServer];
-  }, [hasTurn, joinConfig.turnCredential, joinConfig.turnUrls, joinConfig.turnUsername]);
+  }, [
+    hasTurn,
+    joinConfig.turnCredential,
+    joinConfig.turnUrls,
+    joinConfig.turnUsername,
+  ]);
 
-  const [joinState, setJoinState] = useState<JoinState>(role ? "idle" : "error");
+  const [joinState, setJoinState] = useState<JoinState>(
+    role ? "idle" : "error",
+  );
   const [statusMessage, setStatusMessage] = useState<string>(
-    role ? "Open your camera to begin." : "Invalid route. Use /join/alpha or /join/beta.",
+    role
+      ? "Open your camera to begin."
+      : "Invalid route. Use /join/alpha or /join/beta.",
   );
   const [fatalError, setFatalError] = useState<string | null>(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isVideoOff, setIsVideoOff] = useState(false);
+  const [remoteVideoReady, setRemoteVideoReady] = useState(false);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const socketRef = useRef<Socket | null>(null);
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
   const makingOfferRef = useRef(false);
 
@@ -300,6 +350,8 @@ function JoinPage() {
     if (remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = null;
     }
+    remoteStreamRef.current = null;
+    setRemoteVideoReady(false);
     pendingIceRef.current = [];
   }, []);
 
@@ -337,8 +389,10 @@ function JoinPage() {
 
     peer.ontrack = (event) => {
       const [stream] = event.streams;
+      remoteStreamRef.current = stream ?? null;
       if (remoteVideoRef.current && stream) {
         remoteVideoRef.current.srcObject = stream;
+        setRemoteVideoReady(true);
       }
     };
 
@@ -401,7 +455,9 @@ function JoinPage() {
           localVideoRef.current.srcObject = stream;
         }
 
-        setStatusMessage("Local media ready. Connecting to signaling server...");
+        setStatusMessage(
+          "Local media ready. Connecting to signaling server...",
+        );
         setJoinState("connecting");
 
         const socket = io(serverUrl, {
@@ -417,6 +473,17 @@ function JoinPage() {
           setStatusMessage(`Joined as ${payload.role.toUpperCase()}.`);
           setJoinState("connecting");
           setFatalError(null);
+          setRemoteVideoReady(false);
+          setIsMuted(false);
+          setIsVideoOff(false);
+          if (localStreamRef.current) {
+            localStreamRef.current.getAudioTracks().forEach((track) => {
+              track.enabled = true;
+            });
+            localStreamRef.current.getVideoTracks().forEach((track) => {
+              track.enabled = true;
+            });
+          }
         });
 
         socket.on("waiting", () => {
@@ -480,10 +547,13 @@ function JoinPage() {
           closePeer();
         });
 
-        socket.on("signal-error", (payload: { code: string; message: string }) => {
-          setJoinState("error");
-          setFatalError(`${payload.code}: ${payload.message}`);
-        });
+        socket.on(
+          "signal-error",
+          (payload: { code: string; message: string }) => {
+            setJoinState("error");
+            setFatalError(`${payload.code}: ${payload.message}`);
+          },
+        );
 
         socket.on("connect_error", (error) => {
           setJoinState("error");
@@ -519,17 +589,85 @@ function JoinPage() {
     };
   }, [role, serverUrl, stableMode, hasTurn, iceServers, ensurePeer, closePeer]);
 
+  const toggleMute = useCallback(() => {
+    const stream = localStreamRef.current;
+    if (!stream) {
+      return;
+    }
+    const nextMuted = !isMuted;
+    stream.getAudioTracks().forEach((track) => {
+      track.enabled = !nextMuted;
+    });
+    setIsMuted(nextMuted);
+  }, [isMuted]);
+
+  const toggleVideo = useCallback(() => {
+    const stream = localStreamRef.current;
+    if (!stream) {
+      return;
+    }
+    const nextVideoOff = !isVideoOff;
+    stream.getVideoTracks().forEach((track) => {
+      track.enabled = !nextVideoOff;
+    });
+    setIsVideoOff(nextVideoOff);
+  }, [isVideoOff]);
+
+  const hangup = useCallback(() => {
+    socketRef.current?.emit("leave");
+    socketRef.current?.disconnect();
+    closePeer();
+    setJoinState("waiting");
+    setStatusMessage(
+      "Call ended. Reopen your deterministic role link to rejoin.",
+    );
+  }, [closePeer]);
+
+  const showCallPage = joinState === "ready" || joinState === "connected";
+
+  useEffect(() => {
+    if (localVideoRef.current && localStreamRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current;
+    }
+    if (remoteVideoRef.current && remoteStreamRef.current) {
+      remoteVideoRef.current.srcObject = remoteStreamRef.current;
+      if (!remoteVideoReady) {
+        setRemoteVideoReady(true);
+      }
+    }
+  }, [showCallPage, remoteVideoReady]);
+
+  if (showCallPage && role) {
+    return (
+      <CallPage
+        localVideoRef={localVideoRef}
+        remoteVideoRef={remoteVideoRef}
+        remoteVideoReady={remoteVideoReady}
+        isMuted={isMuted}
+        isVideoOff={isVideoOff}
+        onToggleMute={toggleMute}
+        onToggleVideo={toggleVideo}
+        onHangup={hangup}
+        localName={role === "alpha" ? "Alpha" : "Beta"}
+        remoteName={role === "alpha" ? "Beta" : "Alpha"}
+      />
+    );
+  }
+
   return (
     <main className="shell">
       <section className="card intro reveal">
         <p className="eyebrow">Join Role</p>
         <h1>Two-client WebRTC call</h1>
         <p className="lead">
-          {role ? `You are ${role.toUpperCase()}.` : "Invalid route. Use /join/alpha or /join/beta."}
+          {role
+            ? `You are ${role.toUpperCase()}.`
+            : "Invalid route. Use /join/alpha or /join/beta."}
         </p>
         <p className="mono">Signaling: {serverUrl}</p>
         <p className="mono">
-          Mode: {stableMode ? "Stable" : "Standard"} {stableMode && !hasTurn ? "(no TURN configured)" : ""}
+          Mode: {stableMode ? "Stable" : "Standard"}{" "}
+          {stableMode && !hasTurn ? "(no TURN configured)" : ""}
         </p>
         <p className={`status status-${joinState}`}>{statusMessage}</p>
         {fatalError && <p className="error">{fatalError}</p>}

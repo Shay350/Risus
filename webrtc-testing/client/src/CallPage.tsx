@@ -1,17 +1,31 @@
-import { useState } from "react";
-import {
-  Mic,
-  MicOff,
-  Video,
-  VideoOff,
-  Paperclip,
-  Phone,
-} from "lucide-react";
+import type { RefObject } from "react";
+import { Mic, MicOff, Video, VideoOff, Paperclip, Phone } from "lucide-react";
 
-const VideoCall = () => {
-  const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
+type CallPageProps = {
+  localVideoRef: RefObject<HTMLVideoElement | null>;
+  remoteVideoRef: RefObject<HTMLVideoElement | null>;
+  remoteVideoReady: boolean;
+  isMuted: boolean;
+  isVideoOff: boolean;
+  onToggleMute: () => void;
+  onToggleVideo: () => void;
+  onHangup: () => void;
+  localName: string;
+  remoteName: string;
+};
 
+const VideoCall = ({
+  localVideoRef,
+  remoteVideoRef,
+  remoteVideoReady,
+  isMuted,
+  isVideoOff,
+  onToggleMute,
+  onToggleVideo,
+  onHangup,
+  localName,
+  remoteName,
+}: CallPageProps) => {
   // Mock transcript data
   const transcript = [
     {
@@ -52,7 +66,7 @@ const VideoCall = () => {
       <div className="flex flex-col flex-1 relative h-full">
         {/* Top Header */}
         <div className="flex justify-between items-center px-6 py-5 w-full z-10">
-          <h1 className="text-lg font-medium tracking-wide text-gray-100">
+          <h1 className="font-bold tracking-wide text-gray-100 text-xl">
             Consulting consultations
           </h1>
           <div className="text-sm text-gray-300 font-medium tracking-wide bg-panelBg px-3 py-1.5 rounded-lg">
@@ -64,17 +78,27 @@ const VideoCall = () => {
         {/* Using standard flex and max-w to ensure 16:9 doesn't stretch weirdly on ultra-wide screens */}
         <div className="flex-1 flex flex-col md:flex-row items-center justify-center gap-4 px-6 pb-2 overflow-hidden">
           {/* Person 1 (Michael) */}
-          <div className="relative w-full md:w-1/2 aspect-video rounded-2xl bg-gradient-to-br from-[#2a2d2e] to-[#202224] border border-activeGreen shadow-[0_0_20px_rgba(53,200,152,0.1)] flex items-center justify-center overflow-hidden">
+          <div className="relative w-full md:w-1/2 aspect-video rounded-2xl bg-linear-to-br from-panelBg to-[#202224] border border-activeGreen shadow-[0_0_20px_rgba(53,200,152,0.1)] flex items-center justify-center overflow-hidden">
+            <video
+              ref={localVideoRef}
+              autoPlay
+              muted
+              playsInline
+              className={`absolute inset-0 w-full h-full object-cover ${isVideoOff ? "hidden" : "block"}`}
+            />
+
             {/* Avatar representation */}
-            <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-[#c9839f] flex items-center justify-center shadow-lg relative overflow-hidden border-2 border-appBg">
+            <div
+              className={`w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-[#c9839f] items-center justify-center shadow-lg relative overflow-hidden border-2 border-appBg ${isVideoOff ? "flex" : "hidden"}`}
+            >
               <div className="w-12 h-12 bg-[#3a202a] rounded-full absolute -bottom-2"></div>
               <div className="w-8 h-8 bg-[#f4b69c] rounded-full absolute top-5"></div>
             </div>
 
             {/* Name & Audio visualizer */}
             <div className="absolute bottom-4 left-4 bg-appBg/80 backdrop-blur-md px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2">
-              Michael Smyth
-              <div className="flex gap-[2px] items-center h-3 ml-1">
+              {localName}
+              <div className="flex gap-0.5 items-center h-3 ml-1">
                 <div className="w-0.5 h-1.5 bg-activeGreen rounded-full animate-pulse"></div>
                 <div className="w-0.5 h-2.5 bg-activeGreen rounded-full animate-pulse delay-75"></div>
                 <div className="w-0.5 h-3.5 bg-activeGreen rounded-full animate-pulse delay-150"></div>
@@ -84,14 +108,20 @@ const VideoCall = () => {
 
           {/* Person 2 (Susan) */}
           <div className="relative w-full md:w-1/2 aspect-video rounded-2xl bg-[#242729] border border-[#383b3d] flex items-center justify-center overflow-hidden">
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover"
+            />
             <img
               src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=800"
-              alt="Susan Miko"
-              className="absolute inset-0 w-full h-full object-cover"
+              alt={remoteName}
+              className={`absolute inset-0 w-full h-full object-cover ${remoteVideoReady ? "hidden" : "block"}`}
             />
 
             <div className="absolute bottom-4 left-4 bg-appBg/80 backdrop-blur-md px-3 py-1.5 rounded-lg text-sm font-medium">
-              Susan Miko
+              {remoteName}
             </div>
 
             <div className="absolute bottom-4 right-4 bg-appBg/80 backdrop-blur-md p-2 rounded-full">
@@ -103,21 +133,24 @@ const VideoCall = () => {
         {/* Bottom Control Bar */}
         <div className="flex justify-center items-center gap-4 py-5 z-10">
           <button
-            onClick={() => setIsMuted(!isMuted)}
+            onClick={onToggleMute}
             className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isMuted ? "bg-panelBg hover:bg-[#383b3d] text-white" : "bg-white hover:bg-gray-200 text-black"}`}
           >
             {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
           </button>
 
           <button
-            onClick={() => setIsVideoOff(!isVideoOff)}
+            onClick={onToggleVideo}
             className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isVideoOff ? "bg-panelBg hover:bg-[#383b3d] text-white" : "bg-white hover:bg-gray-200 text-black"}`}
           >
             {isVideoOff ? <VideoOff size={20} /> : <Video size={20} />}
           </button>
 
           {/* End Call Icon Button */}
-          <button className="w-14 h-14 rounded-full bg-dangerRed hover:bg-[#d43d4a] text-white flex items-center justify-center transition-colors shadow-lg">
+          <button
+            onClick={onHangup}
+            className="w-14 h-14 rounded-full bg-dangerRed hover:bg-[#d43d4a] text-white flex items-center justify-center transition-colors shadow-lg"
+          >
             <Phone fill="white" className="rotate-135" size={20} />
           </button>
         </div>
